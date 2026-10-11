@@ -1,0 +1,17 @@
+Android package manager is reachable; starting functional checks
+Installing app and instrumentation APKs
+Performing Streamed Install
+adb: failed to install MinecraftWorldTranslator-debug.apk: Error: device is still booting.
+
+Traceback (most recent call last):
+  File "/workspace/MCmod-Chinese/tools/device_validation.py", line 74, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/workspace/MCmod-Chinese/tools/device_validation.py", line 42, in main
+    adb("install", "-r", str(args.apk))
+  File "/workspace/MCmod-Chinese/tools/device_validation.py", line 21, in adb
+    return subprocess.run([args.adb, *parts], check=True, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/workspace/tooling/android-sdk/platform-tools/adb', 'install', '-r', 'MinecraftWorldTranslator-debug.apk']' returned non-zero exit status 1.

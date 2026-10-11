@@ -1,0 +1,9 @@
+--------- beginning of main
+10-11 05:32:25.423  5228  5248 I MCWT_TEST: Real Bedrock native round trip passed; 1 extracted text entries
+10-11 05:34:55.869  5228  5248 I MCWT_TEST: en: Find the key and open the door. -> 找到钥匙,打开门。
+10-11 05:40:00.411  5228  5248 I MCWT_TEST: ru: Найдите ключ и откройте дверь. -> 找到钥匙,打开门。
+10-11 05:44:46.495  5228  5248 I MCWT_TEST: de: Finde den Schlüssel und öffne die Tür. -> 找到钥匙,打开门。
+10-11 05:49:40.399  5228  5248 I MCWT_TEST: fr: Trouvez la clé et ouvrez la porte. -> 找到钥匙,打开门。
+10-11 05:54:45.083  5228  5248 I MCWT_TEST: es: Encuentra la llave y abre la puerta. -> 找到钥匙,打开门。
+10-11 05:56:10.373  5228  5248 I MCWT_TEST: Protected output: §a找到密钥 %s
+10-11 05:56:10.373  5228  5248 I MCWT_TEST: 开门

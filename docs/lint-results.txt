@@ -1,0 +1,98 @@
+/workspace/MCmod-Chinese/app/src/main/AndroidManifest.xml:5: Warning: The attribute android:allowBackup is deprecated from Android 12 and higher and may be removed in future versions. Consider adding the attribute android:dataExtractionRules specifying an @xml resource which configures cloud backups and device transfers on Android 12 and higher. [DataExtractionRules]
+    <application android:label="Minecraft 地图汉化器" android:allowBackup="false"
+                                                                      ~~~~~
+
+   Explanation for issues of type "DataExtractionRules":
+   Before Android 12, the attributes android:allowBackup and
+   android:fullBackupContent were used to configure all forms of backup,
+   including cloud backups, device-to-device transfers and adb backup.
+
+   In Android 12 and higher, these attributes have been deprecated and will
+   only apply to cloud backups. You should instead use the attribute
+   android:dataExtractionRules, specifying an @xml resource that configures
+   which files to back up, for cloud backups and for device-to-device
+   transfers, separately. If your minSdkVersion supports older versions,
+   you'll still want to specify an android:fullBackupContent resource if the
+   default behavior is not right for your app.
+
+   https://developer.android.com/about/versions/12/backup-restore#xml-changes
+   https://goo.gle/DataExtractionRules
+
+/workspace/MCmod-Chinese/app/src/main/AndroidManifest.xml:5: Warning: Should explicitly set android:icon, there is no default [MissingApplicationIcon]
+    <application android:label="Minecraft 地图汉化器" android:allowBackup="false"
+     ~~~~~~~~~~~
+
+   Explanation for issues of type "MissingApplicationIcon":
+   You should set an icon for the application as whole because there is no
+   default. This attribute must be set as a reference to a drawable resource
+   containing the image (for example @drawable/icon).
+
+   https://developer.android.com/studio/publish/preparing#publishing-configure
+
+/workspace/MCmod-Chinese/app/src/main/java/cn/mcworld/translator/WorldWorker.kt:42: Warning: Use the KTX extension function String.toUri instead? [UseKtx]
+                    val source = Uri.parse(requireNotNull(inputData.getString("source")))
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/MCmod-Chinese/app/src/main/java/cn/mcworld/translator/WorldWorker.kt:69: Warning: Use the KTX extension function String.toUri instead? [UseKtx]
+                    Uri.parse(requireNotNull(inputData.getString("tableUri"))), operation == "table-import")
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/MCmod-Chinese/app/src/main/java/cn/mcworld/translator/WorldWorker.kt:95: Warning: Use the KTX extension function String.toUri instead? [UseKtx]
+                    if (uri != null) SafWorkingCopy(applicationContext).exportToNewDocument(archive, Uri.parse(uri))
+                                                                                                     ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UseKtx":
+   The Android KTX libraries decorates the Android platform SDK as well as
+   various libraries with more convenient extension functions available from
+   Kotlin, allowing you to use default parameters, named parameters, and
+   more.
+
+   Available options:
+
+   **remove-defaults** (default is true):
+   Whether to skip arguments that match the defaults provided by the extension.
+
+   Extensions often provide default values for some of the parameters. For example:
+   ```kotlin
+   fun Path.readLines(charset: Charset = Charsets.UTF_8): List<String> { return Files.readAllLines(this, charset) }
+   ```
+   This lint check will by default automatically omit parameters that match the default, so if your code was calling
+
+   ```kotlin
+   Files.readAllLines(file, Charset.UTF_8)
+   ```
+   lint would replace this with
+   ```kotlin
+   file.readLines()
+   ```
+   rather than
+
+   ```kotlin
+   file.readLines(Charset.UTF_8
+   ```
+   You can turn this behavior off using this option.
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UseKtx">
+           <option name="remove-defaults" value="true" />
+       </issue>
+   </lint>
+   ```
+
+   **require-present** (default is true):
+   Whether to only offer extensions already available.
+
+   This option lets you only have lint suggest extension replacements if those extensions are already available on the class path (in other words, you're already depending on the library containing the extension method.)
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UseKtx">
+           <option name="require-present" value="true" />
+       </issue>
+   </lint>
+   ```
+
+0 errors, 5 warnings

@@ -1,0 +1,13 @@
+{
+  "final_apk_install_succeeded": true,
+  "final_apk_activity_instrumentation_passed": true,
+  "tests": 1,
+  "apk_sha256": "da071fdfd77b49a31f6e62287f9705fd3acea49fa08beec5cc2525cbe03863c6",
+  "all_five_functional_tests": "device-test-results.json",
+  "code_and_model_hashes_unchanged": true,
+  "only_license_assets_added": true,
+  "am_start_W_status": "timeout",
+  "actual_chinese_UI_drawn": true,
+  "system_ui_anr_observed": true,
+  "screenshot": "device-diagnostics/app-final-screen.png"
+}

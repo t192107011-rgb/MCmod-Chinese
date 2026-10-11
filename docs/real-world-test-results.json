@@ -1,0 +1,21 @@
+{
+  "fixture_repository": "https://github.com/Amulet-Team/Amulet-Core",
+  "fixture_commit": "fad173683012f95cc892afd16dc2a95ee7c4697f",
+  "world": "Bedrock vanilla 1.18",
+  "database_library": "amulet-leveldb 1.0.7 (host Python binding, not Android JNI)",
+  "records_verified": 48210,
+  "edited_key": "310100000e00000031",
+  "manual_edit": {
+    "original": "<----\n§r---->\n§r",
+    "replacement": "向左\n§r向右\n§r"
+  },
+  "unparseable_block_entity_records": [],
+  "unchanged_other_records": true,
+  "database_closed_and_reopened": true,
+  "kotlin_nbt_reparse": true,
+  "export_and_reimport_database_equal": true,
+  "unicode_outer_folder_import": true,
+  "source_unchanged": true,
+  "model_inference_tested": false,
+  "minecraft_application_import_tested": false
+}

@@ -1,0 +1,2 @@
+amulet-leveldb==1.0.7
+amulet-nbt==2.1.8

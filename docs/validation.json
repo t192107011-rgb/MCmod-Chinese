@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-11",
+  "build": {
+    "command": "./gradlew assembleDebug",
+    "passed": true,
+    "apk_verification": "apk-verification.json"
+  },
+  "lint": {
+    "command": ":app:lintDebug",
+    "errors": 0,
+    "warnings": 5,
+    "passed": true
+  },
+  "core": {
+    "tests": 25,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "synthetic_inputs_only_for_format_security_unit_tests": true
+  },
+  "host_models": {
+    "languages": [
+      "en",
+      "ru",
+      "de",
+      "fr",
+      "es"
+    ],
+    "real_inference_passed": true,
+    "report": "model-test-results.json",
+    "peak_rss_kib": 486900
+  },
+  "host_real_world": {
+    "records_verified": 48210,
+    "passed": true,
+    "report": "real-world-test-results.json",
+    "actual_minecraft_game_not_tested": true
+  },
+  "android": {
+    "status": "passed",
+    "tests": 5,
+    "failures": 0,
+    "skipped": 0,
+    "sdk": 36,
+    "abi": "x86_64",
+    "emulator_acceleration": "TCG, no KVM",
+    "instrumentation_seconds": 1692.948,
+    "report": "device-test-results.json",
+    "model_memory_snapshots": [
+      "device-diagnostics/translation-memory-snapshot.txt",
+      "device-diagnostics/translation-memory-snapshot-2.txt"
+    ],
+    "snapshots_are_not_peak_measurements": true,
+    "final_license_asset_only_package_verification": "final-apk-device-verification.json",
+    "final_package_install_and_activity_test_passed": true,
+    "system_ui_anr_observed": true,
+    "am_start_W_timed_out": true,
+    "ui_screenshot": "device-diagnostics/app-final-screen.png"
+  },
+  "code_review_only": [
+    "Modern FrontText/BackText/HangingSign",
+    "Written/writable book fields",
+    "Command-block NBT and NPC dialogue JSON schema"
+  ],
+  "unsupported": [
+    "Unverified NPC dialogue persisted inside LevelDB",
+    "Unknown command grammars and unsupported NBT encodings or records"
+  ],
+  "unrun": [
+    "Minecraft game import",
+    "Android 8 runtime",
+    "arm64 physical device",
+    "Actual SAF grant revocation",
+    "Disk-full experiment",
+    "Real modern NPC/books/sign fixtures"
+  ],
+  "apk": {
+    "apk": "MinecraftWorldTranslator-debug.apk",
+    "bytes": 660459414,
+    "sha256": "da071fdfd77b49a31f6e62287f9705fd3acea49fa08beec5cc2525cbe03863c6",
+    "embedded_model_files_sha256_verified": true,
+    "onnx_graph_count": 10,
+    "device_tested_code_native_manifest_resources_identical": true,
+    "only_final_license_assets_added": true
+  }
+}

@@ -1,0 +1,12 @@
+Runtime dependency attribution
+
+AndroidX / Jetpack Compose / Material 3 / WorkManager: The Android Open Source Project, Apache License 2.0.
+Kotlin standard library 2.1.21, kotlinx.coroutines 1.10.2, kotlinx.serialization 1.8.1: JetBrains, Apache License 2.0.
+ONNX Runtime Android 1.22.0: Microsoft, MIT; complete license and upstream ThirdPartyNotices are included.
+SentencePiece 0.2.0: Google, Apache License 2.0; bundled third-party license files are included.
+Bedrock LevelDB and compression libraries: see individual original license files.
+OPUS model origins, fixed revisions, modifications and licenses: see NOTICE-models.txt, assets/model-manifest.json and each original model card.
+
+Complete Apache License 2.0 text is retained in SentencePiece-Apache-2.0.txt.
+Application source license is retained in Application-MIT.txt.
+Exact dependency versions are declared in the project's Gradle files.

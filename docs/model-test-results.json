@@ -1,0 +1,58 @@
+{
+  "runtime": "ONNX Runtime CPU 1.22.0, SentencePiece 0.2.0",
+  "platform": "Linux x86_64 host, NOT Android",
+  "generation": "greedy, maximum 128 tokens, no past cache",
+  "network_used_during_inference": false,
+  "results": [
+    {
+      "language": "en",
+      "input": "Welcome to the village. Find the key and open the door.",
+      "english_pivot": null,
+      "output": "欢迎来到村子 找到钥匙,开门",
+      "seconds": 1.2,
+      "process_peak_rss_kib": 454964,
+      "eos_reached": true,
+      "actual_inference": true
+    },
+    {
+      "language": "ru",
+      "input": "Добро пожаловать в деревню. Найдите ключ и откройте дверь.",
+      "english_pivot": "Welcome to the village, find the key and open the door.",
+      "output": "欢迎来到村子,找到钥匙,开门",
+      "seconds": 1.611,
+      "process_peak_rss_kib": 470076,
+      "eos_reached": true,
+      "actual_inference": true
+    },
+    {
+      "language": "de",
+      "input": "Willkommen im Dorf. Finde den Schlüssel und öffne die Tür.",
+      "english_pivot": "Welcome to the village, find the key and open the door.",
+      "output": "欢迎来到村子,找到钥匙,开门",
+      "seconds": 1.168,
+      "process_peak_rss_kib": 483028,
+      "eos_reached": true,
+      "actual_inference": true
+    },
+    {
+      "language": "fr",
+      "input": "Bienvenue au village. Trouvez la clé et ouvrez la porte.",
+      "english_pivot": "Welcome to the village, find the key and open the door.",
+      "output": "欢迎来到村子,找到钥匙,开门",
+      "seconds": 1.233,
+      "process_peak_rss_kib": 483028,
+      "eos_reached": true,
+      "actual_inference": true
+    },
+    {
+      "language": "es",
+      "input": "Bienvenido al pueblo. Encuentra la llave y abre la puerta.",
+      "english_pivot": "Welcome to town, find the key and open the door.",
+      "output": "欢迎来到镇上,找到钥匙,开门",
+      "seconds": 1.225,
+      "process_peak_rss_kib": 486900,
+      "eos_reached": true,
+      "actual_inference": true
+    }
+  ]
+}

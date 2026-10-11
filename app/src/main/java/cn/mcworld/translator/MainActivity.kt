@@ -1,0 +1,165 @@
+package cn.mcworld.translator
+
+import android.Manifest
+import android.content.Intent
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import java.io.File
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+                TranslatorScreen()
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
+    val state by model.state.collectAsStateWithLifecycle()
+    val message by model.message.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var search by rememberSaveableState()
+    var filterFailures by remember { mutableStateOf(false) }
+    var showIssues by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf<TextEntry?>(null) }
+    var draft by remember { mutableStateOf("") }
+    val notification = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    fun permitNotifications() { if (Build.VERSION.SDK_INT >= 33) notification.launch(Manifest.permission.POST_NOTIFICATIONS) }
+    val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) { permitNotifications(); model.import(uri, false) }
+    }
+    val importFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) { permitNotifications(); model.import(uri, true) }
+    }
+    val exportWorld = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+            model.enqueue("export", "destination" to uri.toString())
+        }
+    }
+    val exportTable = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> if (uri != null) model.table(uri, false) }
+    val importTable = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) model.table(uri, true) }
+    Scaffold(topBar = { TopAppBar(title = { Text("Minecraft 地图汉化器") }) }) { insets ->
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(insets), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Text("选择地图 → 验证 → 选择语言 → 提取 → 翻译 → 审阅 → 验证导出", style = MaterialTheme.typography.bodyMedium)
+                Text("完全离线 · 仅编辑工作副本", color = MaterialTheme.colorScheme.primary)
+                Text("模型已内置；俄、德、法、西经英语中转。初次使用会从 APK 解包模型，请预留约 2 GiB 空间。", style = MaterialTheme.typography.bodySmall)
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { importFile.launch(arrayOf("*/*")) }, enabled = !state.busy) { Text("选择 .mcworld / ZIP") }
+                    OutlinedButton(onClick = { importFolder.launch(null) }, enabled = !state.busy) { Text("地图文件夹") }
+                }
+            }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(state.stage, style = MaterialTheme.typography.titleMedium)
+                        Text(state.progress)
+                        if (state.busy) {
+                            LinearProgressIndicator(Modifier.fillMaxWidth())
+                            OutlinedButton(onClick = model::cancel) { Text("取消任务") }
+                        }
+                        if (message.isNotEmpty()) Text(message, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+            if (state.world.isNotEmpty()) {
+                item {
+                    Text("原文语言", style = MaterialTheme.typography.titleSmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("en" to "英语", "ru" to "俄语", "de" to "德语", "fr" to "法语", "es" to "西班牙语").forEach { (value, label) ->
+                            FilterChip(selected = state.language == value, onClick = { model.language(value) }, enabled = !state.busy, label = { Text(label) })
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { model.enqueue("extract") }, enabled = !state.busy && state.entries.isEmpty()) { Text("提取文字") }
+                        Button(onClick = { model.enqueue("translate") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("自动翻译") }
+                    }
+                }
+                item {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { importTable.launch(arrayOf("application/json", "text/plain")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导入翻译表") }
+                        OutlinedButton(onClick = { exportTable.launch("Minecraft翻译表.json") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导出翻译表") }
+                        Button(onClick = { exportWorld.launch("Minecraft地图-简体中文.mcworld") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("验证并导出地图") }
+                    }
+                    Text("待处理、失败和选择保留的项目会原样导出；不会标记为翻译成功。", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (state.export.isNotEmpty() && !state.busy) item {
+                Button(onClick = {
+                    runCatching {
+                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.translatedworlds", File(state.export))
+                        val intent = Intent(Intent.ACTION_SEND).setType("application/octet-stream").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        context.startActivity(Intent.createChooser(intent, "分享汉化地图"))
+                    }.onFailure { model.message.value = "无法分享：${it.message}" }
+                }) { Text("分享已验证的 .mcworld") }
+            }
+            item {
+                val successful = state.entries.count { it.status in setOf("自动翻译", "手动修改") }
+                val failed = state.entries.count { it.status == "失败" }
+                Text("共 ${state.entries.size} 项 · 有译文 $successful · 失败 $failed · 保留记录 ${state.issues.size}")
+                OutlinedTextField(value = search, onValueChange = { search = it }, label = { Text("搜索原文、译文或来源") }, modifier = Modifier.fillMaxWidth())
+                Row {
+                    FilterChip(selected = filterFailures, onClick = { filterFailures = !filterFailures }, label = { Text("仅失败 / 待处理") })
+                    TextButton(onClick = { showIssues = !showIssues }) { Text(if (showIssues) "隐藏保留报告" else "查看保留报告") }
+                }
+            }
+            if (showIssues) items(state.issues) { issue -> Text(issue, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+            items(state.entries.filter { entry ->
+                (!filterFailures || entry.status in setOf("失败", "待处理")) &&
+                    (search.isBlank() || entry.original.contains(search, true) || entry.translation.contains(search, true) || entry.location.contains(search, true))
+            }, key = { it.id }) { entry ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(entry.location, style = MaterialTheme.typography.labelSmall)
+                        Text("原文：${entry.original}")
+                        Text("译文：${entry.translation.ifBlank { "（保留原文）" }}", color = MaterialTheme.colorScheme.primary)
+                        Text("${entry.status}${if (entry.reason.isBlank()) "" else " · ${entry.reason}"}", style = MaterialTheme.typography.bodySmall,
+                            color = if (entry.status == "失败") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { selected = entry; draft = entry.translation.ifBlank { entry.original } }, enabled = !state.busy) { Text("编辑") }
+                            TextButton(onClick = { model.retranslate(entry.id) }, enabled = !state.busy) { Text("重新翻译") }
+                            TextButton(onClick = { model.keep(entry.id) }, enabled = !state.busy) { Text("保留原文") }
+                        }
+                    }
+                }
+            }
+            item { OutlinedButton(onClick = model::cleanup, enabled = !state.busy) { Text("清理当前工作副本") } }
+        }
+    }
+    selected?.let { entry ->
+        AlertDialog(onDismissRequest = { selected = null }, title = { Text("对照编辑") },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(entry.original)
+                OutlinedTextField(draft, { draft = it }, label = { Text("简体中文译文") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+            } },
+            confirmButton = { TextButton(onClick = { model.edit(entry.id, draft); selected = null }) { Text("保存") } },
+            dismissButton = { TextButton(onClick = { selected = null }) { Text("取消") } })
+    }
+}
+
+@Composable
+private fun rememberSaveableState(): MutableState<String> = androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }

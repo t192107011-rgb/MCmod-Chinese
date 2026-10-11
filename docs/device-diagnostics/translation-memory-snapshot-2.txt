@@ -1,0 +1,46 @@
+Applications Memory Usage (in Kilobytes):
+Uptime: 2848681 Realtime: 2848681
+
+** MEMINFO in pid 5228 [cn.mcworld.translator] **
+ 
+ App Summary
+                       Pss(KB)                        Rss(KB)
+                        ------                         ------
+           Java Heap:    20356                          51652
+         Native Heap:   313372                         317112
+                Code:    18952                          99620
+               Stack:      896                            900
+            Graphics:        0                              0
+       Private Other:    54108
+              System:     9367
+             Unknown:                                   61128
+ 
+           TOTAL PSS:   417051            TOTAL RSS:   530412      TOTAL SWAP (KB):        0
+ 
+ Objects
+               Views:        0         ViewRootImpl:        0
+         AppContexts:        4           Activities:        0
+              Assets:       10        AssetManagers:        0
+       Local Binders:        3        Proxy Binders:       29
+       Parcel memory:        5         Parcel count:       20
+    Death Recipients:        0             WebViews:        0
+ 
+ Native Allocations
+                         Count                       Total(kB)
+                        ------                         ------
+    Other (malloced):      280                             25
+ Other (nonmalloced):       43                             34
+ 
+ SQL
+         MEMORY_USED:      307
+  PAGECACHE_OVERFLOW:       92          MALLOC_SIZE:       46
+ 
+ DATABASES
+      pgsz     dbsz   Lookaside(b) cache hits cache misses cache size  Dbname
+PER CONNECTION STATS
+         4      104            123    10    61    12  /data/user/0/cn.mcworld.translator/no_backup/androidx.work.workdb
+         4        8                    0     0     0    (attached) temp
+         4      104             28     1    20     2  /data/user/0/cn.mcworld.translator/no_backup/androidx.work.workdb (3)
+POOL STATS
+     cache hits  cache misses    cache size  Dbname
+             17           116           133  /data/user/0/cn.mcworld.translator/no_backup/androidx.work.workdb

@@ -1,0 +1,26 @@
+{
+  "checked_at_utc": "2026-10-11T04:43:11.921306+00:00",
+  "endpoints": [
+    {
+      "name": "OPUS-MT eng→cmn_Hans official checkpoint",
+      "url": "https://object.pouta.csc.fi/Tatoeba-MT-models/eng-zho/opus-2021-02-23.zip",
+      "method": "HEAD",
+      "status": "blocked",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "name": "NLLB-200 distilled 600M metadata",
+      "url": "https://huggingface.co/api/models/facebook/nllb-200-distilled-600M",
+      "method": "GET",
+      "status": "reachable",
+      "http_status": 200,
+      "content_length": "9118",
+      "revision": "f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+      "license_metadata": "cc-by-nc-4.0"
+    }
+  ],
+  "model_downloaded": false,
+  "tokenizer_executed": false,
+  "android_inference_executed": false,
+  "translation_executed": false
+}

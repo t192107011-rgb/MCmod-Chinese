@@ -1,0 +1,333 @@
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+cn.mcworld.translator.DeviceReadinessTest:
+INSTRUMENTATION_STATUS: test=realBedrockFixtureWriteExportAndReread
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stack=java.lang.ExceptionInInitializerError
+	at cn.mcworld.translator.WorldOperations.validate(WorldOperations.kt:222)
+	at cn.mcworld.translator.WorldOperations.export(WorldOperations.kt:252)
+	at cn.mcworld.translator.DeviceReadinessTest$realBedrockFixtureWriteExportAndReread$1$1.invokeSuspend(DeviceReadinessTest.kt:66)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 164
+[\r\n]+|§[0-9a-zA-Z]|@[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]*])?|[a-z0-9_.-]+:[a-z0-9_./-]+|%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]|\{\{[^{}\r\n]+}}|\{[A-Za-z0-9_.:-]+}|\$\{[^{}\r\n]+}|\$\([A-Za-z0-9_.:-]+\)|\\(?:[nrtbf\\"']|u[0-9a-fA-F]{4})
+                                                                                                                                                                    ^
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:88)
+	at cn.mcworld.translator.core.ProtectedText.<clinit>(ProtectedText.kt:5)
+	... 11 more
+
+INSTRUMENTATION_STATUS: stream=
+Error in realBedrockFixtureWriteExportAndReread(cn.mcworld.translator.DeviceReadinessTest):
+java.lang.ExceptionInInitializerError
+	at cn.mcworld.translator.WorldOperations.validate(WorldOperations.kt:222)
+	at cn.mcworld.translator.WorldOperations.export(WorldOperations.kt:252)
+	at cn.mcworld.translator.DeviceReadinessTest$realBedrockFixtureWriteExportAndReread$1$1.invokeSuspend(DeviceReadinessTest.kt:66)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 164
+[\r\n]+|§[0-9a-zA-Z]|@[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]*])?|[a-z0-9_.-]+:[a-z0-9_./-]+|%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]|\{\{[^{}\r\n]+}}|\{[A-Za-z0-9_.:-]+}|\$\{[^{}\r\n]+}|\$\([A-Za-z0-9_.:-]+\)|\\(?:[nrtbf\\"']|u[0-9a-fA-F]{4})
+                                                                                                                                                                    ^
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:88)
+	at cn.mcworld.translator.core.ProtectedText.<clinit>(ProtectedText.kt:5)
+	... 11 more
+
+INSTRUMENTATION_STATUS: test=realBedrockFixtureWriteExportAndReread
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=actualOfflineInferenceFiveLanguages
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stack=java.lang.NoClassDefFoundError: cn.mcworld.translator.core.ProtectedText
+	at cn.mcworld.translator.OfflineTranslator.translate(OfflineTranslator.kt:26)
+	at cn.mcworld.translator.DeviceReadinessTest$actualOfflineInferenceFiveLanguages$1$1.invokeSuspend(DeviceReadinessTest.kt:41)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+Caused by: java.lang.ExceptionInInitializerError
+	at cn.mcworld.translator.WorldOperations.validate(WorldOperations.kt:222)
+	at cn.mcworld.translator.WorldOperations.export(WorldOperations.kt:252)
+	at cn.mcworld.translator.DeviceReadinessTest$realBedrockFixtureWriteExportAndReread$1$1.invokeSuspend(DeviceReadinessTest.kt:66)
+	... 8 more
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 164
+[\r\n]+|§[0-9a-zA-Z]|@[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]*])?|[a-z0-9_.-]+:[a-z0-9_./-]+|%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]|\{\{[^{}\r\n]+}}|\{[A-Za-z0-9_.:-]+}|\$\{[^{}\r\n]+}|\$\([A-Za-z0-9_.:-]+\)|\\(?:[nrtbf\\"']|u[0-9a-fA-F]{4})
+                                                                                                                                                                    ^
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:88)
+	at cn.mcworld.translator.core.ProtectedText.<clinit>(ProtectedText.kt:5)
+	... 11 more
+
+INSTRUMENTATION_STATUS: stream=
+Error in actualOfflineInferenceFiveLanguages(cn.mcworld.translator.DeviceReadinessTest):
+java.lang.NoClassDefFoundError: cn.mcworld.translator.core.ProtectedText
+	at cn.mcworld.translator.OfflineTranslator.translate(OfflineTranslator.kt:26)
+	at cn.mcworld.translator.DeviceReadinessTest$actualOfflineInferenceFiveLanguages$1$1.invokeSuspend(DeviceReadinessTest.kt:41)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+Caused by: java.lang.ExceptionInInitializerError
+	at cn.mcworld.translator.WorldOperations.validate(WorldOperations.kt:222)
+	at cn.mcworld.translator.WorldOperations.export(WorldOperations.kt:252)
+	at cn.mcworld.translator.DeviceReadinessTest$realBedrockFixtureWriteExportAndReread$1$1.invokeSuspend(DeviceReadinessTest.kt:66)
+	... 8 more
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 164
+[\r\n]+|§[0-9a-zA-Z]|@[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]*])?|[a-z0-9_.-]+:[a-z0-9_./-]+|%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]|\{\{[^{}\r\n]+}}|\{[A-Za-z0-9_.:-]+}|\$\{[^{}\r\n]+}|\$\([A-Za-z0-9_.:-]+\)|\\(?:[nrtbf\\"']|u[0-9a-fA-F]{4})
+                                                                                                                                                                    ^
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:88)
+	at cn.mcworld.translator.core.ProtectedText.<clinit>(ProtectedText.kt:5)
+	... 11 more
+
+INSTRUMENTATION_STATUS: test=actualOfflineInferenceFiveLanguages
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=inaccessibleSafUriFailsAndCleansCopy
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=inaccessibleSafUriFailsAndCleansCopy
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=nestedCommandProtectionOnDevice
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stack=java.lang.NoClassDefFoundError: cn.mcworld.translator.core.ProtectedText
+	at cn.mcworld.translator.core.DisplayCommand$Plan.rewrite(DisplayCommand.kt:32)
+	at cn.mcworld.translator.DeviceReadinessTest.nestedCommandProtectionOnDevice(DeviceReadinessTest.kt:94)
+	... 32 trimmed
+Caused by: java.lang.ExceptionInInitializerError
+	at cn.mcworld.translator.WorldOperations.validate(WorldOperations.kt:222)
+	at cn.mcworld.translator.WorldOperations.export(WorldOperations.kt:252)
+	at cn.mcworld.translator.DeviceReadinessTest$realBedrockFixtureWriteExportAndReread$1$1.invokeSuspend(DeviceReadinessTest.kt:66)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 164
+[\r\n]+|§[0-9a-zA-Z]|@[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]*])?|[a-z0-9_.-]+:[a-z0-9_./-]+|%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]|\{\{[^{}\r\n]+}}|\{[A-Za-z0-9_.:-]+}|\$\{[^{}\r\n]+}|\$\([A-Za-z0-9_.:-]+\)|\\(?:[nrtbf\\"']|u[0-9a-fA-F]{4})
+                                                                                                                                                                    ^
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:88)
+	at cn.mcworld.translator.core.ProtectedText.<clinit>(ProtectedText.kt:5)
+	... 11 more
+
+INSTRUMENTATION_STATUS: stream=
+Error in nestedCommandProtectionOnDevice(cn.mcworld.translator.DeviceReadinessTest):
+java.lang.NoClassDefFoundError: cn.mcworld.translator.core.ProtectedText
+	at cn.mcworld.translator.core.DisplayCommand$Plan.rewrite(DisplayCommand.kt:32)
+	at cn.mcworld.translator.DeviceReadinessTest.nestedCommandProtectionOnDevice(DeviceReadinessTest.kt:94)
+	... 32 trimmed
+Caused by: java.lang.ExceptionInInitializerError
+	at cn.mcworld.translator.WorldOperations.validate(WorldOperations.kt:222)
+	at cn.mcworld.translator.WorldOperations.export(WorldOperations.kt:252)
+	at cn.mcworld.translator.DeviceReadinessTest$realBedrockFixtureWriteExportAndReread$1$1.invokeSuspend(DeviceReadinessTest.kt:66)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 164
+[\r\n]+|§[0-9a-zA-Z]|@[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]*])?|[a-z0-9_.-]+:[a-z0-9_./-]+|%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]|\{\{[^{}\r\n]+}}|\{[A-Za-z0-9_.:-]+}|\$\{[^{}\r\n]+}|\$\([A-Za-z0-9_.:-]+\)|\\(?:[nrtbf\\"']|u[0-9a-fA-F]{4})
+                                                                                                                                                                    ^
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:88)
+	at cn.mcworld.translator.core.ProtectedText.<clinit>(ProtectedText.kt:5)
+	... 11 more
+
+INSTRUMENTATION_STATUS: test=nestedCommandProtectionOnDevice
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=activityStarts
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=5
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=activityStarts
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 121.65
+There were 3 failures:
+1) realBedrockFixtureWriteExportAndReread(cn.mcworld.translator.DeviceReadinessTest)
+java.lang.ExceptionInInitializerError
+	at cn.mcworld.translator.WorldOperations.validate(WorldOperations.kt:222)
+	at cn.mcworld.translator.WorldOperations.export(WorldOperations.kt:252)
+	at cn.mcworld.translator.DeviceReadinessTest$realBedrockFixtureWriteExportAndReread$1$1.invokeSuspend(DeviceReadinessTest.kt:66)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 164
+[\r\n]+|§[0-9a-zA-Z]|@[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]*])?|[a-z0-9_.-]+:[a-z0-9_./-]+|%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]|\{\{[^{}\r\n]+}}|\{[A-Za-z0-9_.:-]+}|\$\{[^{}\r\n]+}|\$\([A-Za-z0-9_.:-]+\)|\\(?:[nrtbf\\"']|u[0-9a-fA-F]{4})
+                                                                                                                                                                    ^
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:88)
+	at cn.mcworld.translator.core.ProtectedText.<clinit>(ProtectedText.kt:5)
+	... 11 more
+2) actualOfflineInferenceFiveLanguages(cn.mcworld.translator.DeviceReadinessTest)
+java.lang.NoClassDefFoundError: cn.mcworld.translator.core.ProtectedText
+	at cn.mcworld.translator.OfflineTranslator.translate(OfflineTranslator.kt:26)
+	at cn.mcworld.translator.DeviceReadinessTest$actualOfflineInferenceFiveLanguages$1$1.invokeSuspend(DeviceReadinessTest.kt:41)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+Caused by: java.lang.ExceptionInInitializerError
+	at cn.mcworld.translator.WorldOperations.validate(WorldOperations.kt:222)
+	at cn.mcworld.translator.WorldOperations.export(WorldOperations.kt:252)
+	at cn.mcworld.translator.DeviceReadinessTest$realBedrockFixtureWriteExportAndReread$1$1.invokeSuspend(DeviceReadinessTest.kt:66)
+	... 8 more
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 164
+[\r\n]+|§[0-9a-zA-Z]|@[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]*])?|[a-z0-9_.-]+:[a-z0-9_./-]+|%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]|\{\{[^{}\r\n]+}}|\{[A-Za-z0-9_.:-]+}|\$\{[^{}\r\n]+}|\$\([A-Za-z0-9_.:-]+\)|\\(?:[nrtbf\\"']|u[0-9a-fA-F]{4})
+                                                                                                                                                                    ^
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:88)
+	at cn.mcworld.translator.core.ProtectedText.<clinit>(ProtectedText.kt:5)
+	... 11 more
+3) nestedCommandProtectionOnDevice(cn.mcworld.translator.DeviceReadinessTest)
+java.lang.NoClassDefFoundError: cn.mcworld.translator.core.ProtectedText
+	at cn.mcworld.translator.core.DisplayCommand$Plan.rewrite(DisplayCommand.kt:32)
+	at cn.mcworld.translator.DeviceReadinessTest.nestedCommandProtectionOnDevice(DeviceReadinessTest.kt:94)
+	... 32 trimmed
+Caused by: java.lang.ExceptionInInitializerError
+	at cn.mcworld.translator.WorldOperations.validate(WorldOperations.kt:222)
+	at cn.mcworld.translator.WorldOperations.export(WorldOperations.kt:252)
+	at cn.mcworld.translator.DeviceReadinessTest$realBedrockFixtureWriteExportAndReread$1$1.invokeSuspend(DeviceReadinessTest.kt:66)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
+	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
+Caused by: java.util.regex.PatternSyntaxException: Syntax error in regexp pattern near index 164
+[\r\n]+|§[0-9a-zA-Z]|@[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]*])?|[a-z0-9_.-]+:[a-z0-9_./-]+|%(?:[0-9]+\$)?[-#+ 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z%]|\{\{[^{}\r\n]+}}|\{[A-Za-z0-9_.:-]+}|\$\{[^{}\r\n]+}|\$\([A-Za-z0-9_.:-]+\)|\\(?:[nrtbf\\"']|u[0-9a-fA-F]{4})
+                                                                                                                                                                    ^
+	at com.android.icu.util.regex.PatternNative.compileImpl(Native Method)
+	at com.android.icu.util.regex.PatternNative.<init>(PatternNative.java:53)
+	at com.android.icu.util.regex.PatternNative.create(PatternNative.java:49)
+	at java.util.regex.Pattern.compile(Pattern.java:3533)
+	at java.util.regex.Pattern.<init>(Pattern.java:1419)
+	at java.util.regex.Pattern.compile(Pattern.java:921)
+	at kotlin.text.Regex.<init>(Regex.kt:88)
+	at cn.mcworld.translator.core.ProtectedText.<clinit>(ProtectedText.kt:5)
+	... 11 more
+
+FAILURES!!!
+Tests run: 5,  Failures: 3
+
+
+INSTRUMENTATION_CODE: -1

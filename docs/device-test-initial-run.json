@@ -1,0 +1,12 @@
+{
+  "android_release": "16",
+  "sdk": "36",
+  "abi": "x86_64",
+  "wifi_disabled": true,
+  "mobile_data_disabled": true,
+  "passed": false,
+  "instrumentation_log": "device-test-results.instrumentation.txt",
+  "minecraft_import_tested": false,
+  "fixture_commit": "fad173683012f95cc892afd16dc2a95ee7c4697f",
+  "app_apk_bytes": 660459183
+}

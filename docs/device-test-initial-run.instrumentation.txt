@@ -1,0 +1,95 @@
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+cn.mcworld.translator.DeviceReadinessTest:
+INSTRUMENTATION_STATUS: test=initializationError
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=cn.mcworld.translator.DeviceReadinessTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.RuntimeException: Failed to instantiate test runner class androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner
+
+
+	at androidx.test.ext.junit.runners.AndroidJUnit4.throwInitializationError(AndroidJUnit4.java:129)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.loadRunner(AndroidJUnit4.java:121)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.loadRunner(AndroidJUnit4.java:82)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.<init>(AndroidJUnit4.java:56)
+	... 13 trimmed
+Caused by: java.lang.reflect.InvocationTargetException
+	at java.lang.reflect.Constructor.newInstance0(Native Method)
+	at java.lang.reflect.Constructor.newInstance(Constructor.java:343)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.loadRunner(AndroidJUnit4.java:112)
+	... 16 more
+Caused by: org.junit.runners.model.InvalidTestClassError: Invalid test class 'cn.mcworld.translator.DeviceReadinessTest':
+  1. Method realBedrockFixtureWriteExportAndReread() should be void
+  2. Method actualOfflineInferenceFiveLanguages() should be void
+	at org.junit.runners.ParentRunner.validate(ParentRunner.java:525)
+	at org.junit.runners.ParentRunner.<init>(ParentRunner.java:92)
+	at org.junit.runners.BlockJUnit4ClassRunner.<init>(BlockJUnit4ClassRunner.java:74)
+	at androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner.<init>(AndroidJUnit4ClassRunner.java:50)
+	at androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner.<init>(AndroidJUnit4ClassRunner.java:55)
+	... 19 more
+
+INSTRUMENTATION_STATUS: stream=
+Error in initializationError(cn.mcworld.translator.DeviceReadinessTest):
+java.lang.RuntimeException: Failed to instantiate test runner class androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner
+
+
+	at androidx.test.ext.junit.runners.AndroidJUnit4.throwInitializationError(AndroidJUnit4.java:129)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.loadRunner(AndroidJUnit4.java:121)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.loadRunner(AndroidJUnit4.java:82)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.<init>(AndroidJUnit4.java:56)
+	... 13 trimmed
+Caused by: java.lang.reflect.InvocationTargetException
+	at java.lang.reflect.Constructor.newInstance0(Native Method)
+	at java.lang.reflect.Constructor.newInstance(Constructor.java:343)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.loadRunner(AndroidJUnit4.java:112)
+	... 16 more
+Caused by: org.junit.runners.model.InvalidTestClassError: Invalid test class 'cn.mcworld.translator.DeviceReadinessTest':
+  1. Method realBedrockFixtureWriteExportAndReread() should be void
+  2. Method actualOfflineInferenceFiveLanguages() should be void
+	at org.junit.runners.ParentRunner.validate(ParentRunner.java:525)
+	at org.junit.runners.ParentRunner.<init>(ParentRunner.java:92)
+	at org.junit.runners.BlockJUnit4ClassRunner.<init>(BlockJUnit4ClassRunner.java:74)
+	at androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner.<init>(AndroidJUnit4ClassRunner.java:50)
+	at androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner.<init>(AndroidJUnit4ClassRunner.java:55)
+	... 19 more
+
+INSTRUMENTATION_STATUS: test=initializationError
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 1.185
+There was 1 failure:
+1) initializationError(cn.mcworld.translator.DeviceReadinessTest)
+java.lang.RuntimeException: Failed to instantiate test runner class androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner
+
+
+	at androidx.test.ext.junit.runners.AndroidJUnit4.throwInitializationError(AndroidJUnit4.java:129)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.loadRunner(AndroidJUnit4.java:121)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.loadRunner(AndroidJUnit4.java:82)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.<init>(AndroidJUnit4.java:56)
+	... 13 trimmed
+Caused by: java.lang.reflect.InvocationTargetException
+	at java.lang.reflect.Constructor.newInstance0(Native Method)
+	at java.lang.reflect.Constructor.newInstance(Constructor.java:343)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.loadRunner(AndroidJUnit4.java:112)
+	... 16 more
+Caused by: org.junit.runners.model.InvalidTestClassError: Invalid test class 'cn.mcworld.translator.DeviceReadinessTest':
+  1. Method realBedrockFixtureWriteExportAndReread() should be void
+  2. Method actualOfflineInferenceFiveLanguages() should be void
+	at org.junit.runners.ParentRunner.validate(ParentRunner.java:525)
+	at org.junit.runners.ParentRunner.<init>(ParentRunner.java:92)
+	at org.junit.runners.BlockJUnit4ClassRunner.<init>(BlockJUnit4ClassRunner.java:74)
+	at androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner.<init>(AndroidJUnit4ClassRunner.java:50)
+	at androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner.<init>(AndroidJUnit4ClassRunner.java:55)
+	... 19 more
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

@@ -1,0 +1,322 @@
+[
+  {
+    "pair": "en-zh",
+    "license": "apache-2.0",
+    "original_repository": "Helsinki-NLP/opus-mt-en-zh",
+    "original_revision": "408d9bc410a388e1d9aef112a2daba955b945255",
+    "converted_repository": "Xenova/opus-mt-en-zh",
+    "converted_revision": "046f55aec303cdee3e0318604406d4df20f1e8ea",
+    "files": [
+      {
+        "file": "onnx/encoder_model_quantized.onnx",
+        "bytes": 52899742,
+        "sha256": "d3b7912bf6a9bd27e4c074c2df91d4ff3d5b4bc5f7f6c8d7cc9c805c98fbafee",
+        "upstream_digest": "d3b7912bf6a9bd27e4c074c2df91d4ff3d5b4bc5f7f6c8d7cc9c805c98fbafee"
+      },
+      {
+        "file": "onnx/decoder_model_quantized.onnx",
+        "bytes": 59842102,
+        "sha256": "2c66a3981099b40edbb3a0d65e015d05964d42fecb9780f8422776eff5939112",
+        "upstream_digest": "2c66a3981099b40edbb3a0d65e015d05964d42fecb9780f8422776eff5939112"
+      },
+      {
+        "file": "source.spm",
+        "bytes": 806435,
+        "sha256": "5775ddc9e3ff2fae91554da56468ad35ff56edaba870fea74447bc7234bfdaa8",
+        "upstream_digest": "3f695c68a3aeb685ded9a5db0865af02c986bebf"
+      },
+      {
+        "file": "target.spm",
+        "bytes": 804600,
+        "sha256": "81dc94efa84e4025ef38d25d5d07429fe41e3eb29d44003f1db6fe98487b0052",
+        "upstream_digest": "e19744e15a0f53b209fa40dbdc9e7fc4e96771cd"
+      },
+      {
+        "file": "vocab.json",
+        "bytes": 1747795,
+        "sha256": "22c957348eed495ee925afc40a36da3e387c8a34a734c8486967c2dca271613e",
+        "upstream_digest": "af0681e0cede876abeea5955e449a81c10e1b4bc"
+      },
+      {
+        "file": "config.json",
+        "bytes": 1503,
+        "sha256": "4727d1229a04f95bf6f39abf949d8080615433d99d6ebd85f81c09edd247d5fa",
+        "upstream_digest": "787a84798a695a75720fa01ad2881c8d193c45f2"
+      },
+      {
+        "file": "generation_config.json",
+        "bytes": 293,
+        "sha256": "b743baabb7da4c1a2f19fe558bd6b4c0c7c3b0762fcb5ca7a48fe5a2c2219803",
+        "upstream_digest": "015c3e06e8eac3e32e2078ba3140f246e754ae7b"
+      },
+      {
+        "file": "tokenizer_config.json",
+        "bytes": 282,
+        "sha256": "a914596e6bff113a8428d4793b586da87cd0b95697a0e72aba90cc1d95858481",
+        "upstream_digest": "5d963ba4e41e1f0926f052dd3d04678d0819f027"
+      },
+      {
+        "file": "README.md",
+        "bytes": 571,
+        "sha256": "4aeb4d31c2b0ab8dd06aaa6c8705f8bdada6869ca67def9c2e1f5475ff007530",
+        "upstream_digest": "b6d09d6e60bb45bc3ee57bce43f77f41a2fb7951"
+      }
+    ]
+  },
+  {
+    "pair": "ru-en",
+    "license": "cc-by-4.0",
+    "original_repository": "Helsinki-NLP/opus-mt-ru-en",
+    "original_revision": "fbd6dc73284f95536648512cc21d57f19191961a",
+    "converted_repository": "Xenova/opus-mt-ru-en",
+    "converted_revision": "afe8c6c738ec81b6d033fd8f44f9678a639a7c67",
+    "files": [
+      {
+        "file": "onnx/encoder_model_quantized.onnx",
+        "bytes": 51628446,
+        "sha256": "c10df0466540534bb70c4402d539c349b8bfa9968184cad89f51408cf13e7eb7",
+        "upstream_digest": "c10df0466540534bb70c4402d539c349b8bfa9968184cad89f51408cf13e7eb7"
+      },
+      {
+        "file": "onnx/decoder_model_quantized.onnx",
+        "bytes": 58560874,
+        "sha256": "d880abf58612013815554ef55c98d0f28b68190b2cb6f65c39d6e834f51dda8c",
+        "upstream_digest": "d880abf58612013815554ef55c98d0f28b68190b2cb6f65c39d6e834f51dda8c"
+      },
+      {
+        "file": "source.spm",
+        "bytes": 1080169,
+        "sha256": "745998e51ba5b058e38b7ac7765c25c43ed5c1c39cc92b27163b9b2e323c9d7c",
+        "upstream_digest": "745998e51ba5b058e38b7ac7765c25c43ed5c1c39cc92b27163b9b2e323c9d7c"
+      },
+      {
+        "file": "target.spm",
+        "bytes": 802781,
+        "sha256": "16bebef1389a0b8ab452772c4e35b9e605e5713f8ac7baa71ca701394eaa086d",
+        "upstream_digest": "ee65931d442b9dbb755f640edb9f31b78c7c27ef"
+      },
+      {
+        "file": "vocab.json",
+        "bytes": 2726796,
+        "sha256": "5cf0d95d930d8d3e783c9e2f46a72f08b43a18060dab4ddefbcb66a733efedcb",
+        "upstream_digest": "bd423a51ecc4bd85d337b4aed1d457116721069f"
+      },
+      {
+        "file": "config.json",
+        "bytes": 1376,
+        "sha256": "60dc7d0906dbe42a1d740cdd7e84ce1534685b81fbe16005a0301adac69086ce",
+        "upstream_digest": "efe5b5bcfc175072c1b4b60435a2a7d0fcfb5b10"
+      },
+      {
+        "file": "generation_config.json",
+        "bytes": 293,
+        "sha256": "9bcb507fa6117b07870df6627294b878b0710a55bc3abc9cf0db980e0c48fe2c",
+        "upstream_digest": "c3f19d9ef5965b76099efe81189c0d1d5518b694"
+      },
+      {
+        "file": "tokenizer_config.json",
+        "bytes": 280,
+        "sha256": "c0710ba5ee70ccb2d0e6b0092139d00f370b9c4783c4b077584cb3cc8f7ac4e0",
+        "upstream_digest": "1c53aa66649c9a7bf87b7d317d2f2159ab29fb20"
+      },
+      {
+        "file": "README.md",
+        "bytes": 571,
+        "sha256": "1e1c206311d158f485fc1c4be8d9e9ab2629d37979289a39f232c6665c32ee55",
+        "upstream_digest": "48fbfac87cc313a6f686aa9ecea926c29e91beb6"
+      }
+    ]
+  },
+  {
+    "pair": "de-en",
+    "license": "apache-2.0",
+    "original_repository": "Helsinki-NLP/opus-mt-de-en",
+    "original_revision": "1a922f3b32a8e809e17a47d4b32142d8105924e5",
+    "converted_repository": "Xenova/opus-mt-de-en",
+    "converted_revision": "399dfd68706739fffd503f876093e455ae268a06",
+    "files": [
+      {
+        "file": "onnx/encoder_model_quantized.onnx",
+        "bytes": 49366942,
+        "sha256": "4cedda8f8c89b72a42b3c6cd1e7a27f2de24457093e3bf80cb3e46829641fcd8",
+        "upstream_digest": "4cedda8f8c89b72a42b3c6cd1e7a27f2de24457093e3bf80cb3e46829641fcd8"
+      },
+      {
+        "file": "onnx/decoder_model_quantized.onnx",
+        "bytes": 56281702,
+        "sha256": "e44c1c4b50e8f51e49d4d5e54a9af1550dc74763d4023644a38af62611e6efc9",
+        "upstream_digest": "e44c1c4b50e8f51e49d4d5e54a9af1550dc74763d4023644a38af62611e6efc9"
+      },
+      {
+        "file": "source.spm",
+        "bytes": 796845,
+        "sha256": "bbd1f495eea99c8e21ae086d9146e0fa7b096c3dfdd9ba07ab8b631889df5c9b",
+        "upstream_digest": "9dd0d88081be8d75fbc029762329cc11bfad07b9"
+      },
+      {
+        "file": "target.spm",
+        "bytes": 768489,
+        "sha256": "678f2a1177d8389f67b66299762dcc4fc567e89b07e212ba91b0c56daecf47ce",
+        "upstream_digest": "e73d58f99c702eb1746e3dc55bc76255d7aa4a94"
+      },
+      {
+        "file": "vocab.json",
+        "bytes": 1389436,
+        "sha256": "d5acea957b265a78554999144459c5e391e0df525864edc8287bc090290baa44",
+        "upstream_digest": "13d464a333d4582c869c0a46a69b78064c6eb418"
+      },
+      {
+        "file": "config.json",
+        "bytes": 1376,
+        "sha256": "6754743ec4754957d8552dad869d1314f3af6626b67446ec4cebe5e2fbaa0fc4",
+        "upstream_digest": "27f00c653f028b409f10f59b9aa22b855bd463a4"
+      },
+      {
+        "file": "generation_config.json",
+        "bytes": 293,
+        "sha256": "cd16a899388283889c6e87b903c689ce73430aaa18335415f9d9ea770606538e",
+        "upstream_digest": "a99b643eda6cb47bdb49c9cf5408c689461e5419"
+      },
+      {
+        "file": "tokenizer_config.json",
+        "bytes": 280,
+        "sha256": "e3687c40400600366d9b073a3fd9f75dc8b40d5a9d6e5c92544cf2e9592abe6c",
+        "upstream_digest": "0222f6d9e1e3cc16a3a48b2c6e95beec38bb0171"
+      },
+      {
+        "file": "README.md",
+        "bytes": 571,
+        "sha256": "f50d3c985208d2012d0f369997d531f61c31ea485bf498a11f6ab3f7a1617b74",
+        "upstream_digest": "1842ceb884142d426bcb17ae2007221a98a83b83"
+      }
+    ]
+  },
+  {
+    "pair": "fr-en",
+    "license": "apache-2.0",
+    "original_repository": "Helsinki-NLP/opus-mt-fr-en",
+    "original_revision": "c4aed37b318c763fd177aa449b44e3b783cc6c02",
+    "converted_repository": "Xenova/opus-mt-fr-en",
+    "converted_revision": "6b166a182780e118c997879d0ad5be4b53671644",
+    "files": [
+      {
+        "file": "onnx/encoder_model_quantized.onnx",
+        "bytes": 50090398,
+        "sha256": "e727cb26ac6bf816394c49671af69c9ae5798868fed1e40849872415dffc1772",
+        "upstream_digest": "e727cb26ac6bf816394c49671af69c9ae5798868fed1e40849872415dffc1772"
+      },
+      {
+        "file": "onnx/decoder_model_quantized.onnx",
+        "bytes": 57010810,
+        "sha256": "8c5a0c5d113a1c4c5ae46e014aacf770f3bff2109fe8b74ead6aae5c5f408ffc",
+        "upstream_digest": "8c5a0c5d113a1c4c5ae46e014aacf770f3bff2109fe8b74ead6aae5c5f408ffc"
+      },
+      {
+        "file": "source.spm",
+        "bytes": 802397,
+        "sha256": "78d0e717c77053f1c4b856d8661d9cb87c64f083a35418c087b9146300e4f585",
+        "upstream_digest": "e95b99a0e1a115d0f27eb051c7afc5a2859f1630"
+      },
+      {
+        "file": "target.spm",
+        "bytes": 778395,
+        "sha256": "173e9f493a668fe396d599e28d414a201193094e6ffd7a4678e5aab0f6d3d838",
+        "upstream_digest": "5b989d2ad3cc6596bef819b2ad755f3e06377476"
+      },
+      {
+        "file": "vocab.json",
+        "bytes": 1458196,
+        "sha256": "f2ba9c69ae20f96b8bd821239a9152be422394f980350b77907cffc183db5f2d",
+        "upstream_digest": "80a0a4d0f2a21df372ac2595bbb348444d9fbb07"
+      },
+      {
+        "file": "config.json",
+        "bytes": 1411,
+        "sha256": "6c2851f154d7b88c7767e4fdcf8a5694a36a456bfa6cbcde1b13fdbade3b56f6",
+        "upstream_digest": "c313d87894f90a99ec40f30eccd85c1210d84ae9"
+      },
+      {
+        "file": "generation_config.json",
+        "bytes": 293,
+        "sha256": "f9a4824ec78c61b4a95afc43bbb6a9545a44ccf1c01d0963a286e799b9e7b256",
+        "upstream_digest": "22387016535f6300a9f8c5b68055b5c0ffe5cc34"
+      },
+      {
+        "file": "tokenizer_config.json",
+        "bytes": 280,
+        "sha256": "bba9e6b1e3b9724d15ebacaf11eaac360c5ae3f4139bcdef0ee1610592eaa3fe",
+        "upstream_digest": "c57f3cfa62783a8fc57f2c695cc45909df78eeb0"
+      },
+      {
+        "file": "README.md",
+        "bytes": 571,
+        "sha256": "b0003b63bd7bf4718b56a2dd5d9bc83ffccd437504e554b1a94e8f9f8d393625",
+        "upstream_digest": "404606bb7f1b4acef314f7c3f08f965b7e7f03e3"
+      }
+    ]
+  },
+  {
+    "pair": "es-en",
+    "license": "apache-2.0",
+    "original_repository": "Helsinki-NLP/opus-mt-es-en",
+    "original_revision": "c96e2c5399ebfae4fc43d9669556b9afa74bb69d",
+    "converted_repository": "Xenova/opus-mt-es-en",
+    "converted_revision": "eadfd7c658a9d8929ac3b8e996b68a68e2c7d480",
+    "files": [
+      {
+        "file": "onnx/encoder_model_quantized.onnx",
+        "bytes": 52899742,
+        "sha256": "c01e70f8455efc350831aa2af7ed187b16829241f0018ba07d1ba643a391bc18",
+        "upstream_digest": "c01e70f8455efc350831aa2af7ed187b16829241f0018ba07d1ba643a391bc18"
+      },
+      {
+        "file": "onnx/decoder_model_quantized.onnx",
+        "bytes": 59842102,
+        "sha256": "d518f1f0041b2831f0aeb5a087cf899742cd9d4b574f6b98ad9f816b8c06925b",
+        "upstream_digest": "d518f1f0041b2831f0aeb5a087cf899742cd9d4b574f6b98ad9f816b8c06925b"
+      },
+      {
+        "file": "source.spm",
+        "bytes": 825924,
+        "sha256": "e236ee6d866b635c0142114f8647f39831f9d92534aa2aad75c942f6a78ad0e3",
+        "upstream_digest": "2dfb31564bc31c8fbc65c8bfa8cc201fbbf45e44"
+      },
+      {
+        "file": "target.spm",
+        "bytes": 801636,
+        "sha256": "4dd547c24816a335e7b0b2e63376a8f1b3cbfc671eda5ab808dd44fdadaa8791",
+        "upstream_digest": "6dc92ba66940f622779f82c376066c2c46bbad12"
+      },
+      {
+        "file": "vocab.json",
+        "bytes": 1720044,
+        "sha256": "b074b4cca0036ade5a39ea97faabd534e1015482c480fc2cb02c6481983eb163",
+        "upstream_digest": "b69bfd1b1a407f74476e0cb94ba67ed2aa4f6282"
+      },
+      {
+        "file": "config.json",
+        "bytes": 1433,
+        "sha256": "fab3a7f93185bc5aa7b419f6a1e6e74d98c8f2a506c94493d3019bf46da3478d",
+        "upstream_digest": "0761a7bbe6cc7f76dd7a52599bb2c9722ee80aa4"
+      },
+      {
+        "file": "generation_config.json",
+        "bytes": 293,
+        "sha256": "b743baabb7da4c1a2f19fe558bd6b4c0c7c3b0762fcb5ca7a48fe5a2c2219803",
+        "upstream_digest": "015c3e06e8eac3e32e2078ba3140f246e754ae7b"
+      },
+      {
+        "file": "tokenizer_config.json",
+        "bytes": 282,
+        "sha256": "e1fac15a910169d5b5ec07a13b0374273626a239b5142db10be229ca66cc52a9",
+        "upstream_digest": "1b8a9d73fe9d0d8385d914943b57a3470ee1fc85"
+      },
+      {
+        "file": "README.md",
+        "bytes": 571,
+        "sha256": "dfd10182d98db755495900a0faeae3cb71b4fdf029265045b7ef463a85adbd4a",
+        "upstream_digest": "f703429ac8ceac51d667e8a605afe64cf1e17725"
+      }
+    ]
+  }
+]

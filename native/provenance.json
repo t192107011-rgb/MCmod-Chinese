@@ -1,0 +1,26 @@
+[
+  {
+    "name": "leveldb",
+    "commit": "1352243bb27d287b27be94f7591218dddb3ef900"
+  },
+  {
+    "name": "sentencepiece",
+    "commit": "17d7580d6407802f85855d2cc9190634e2c95624"
+  },
+  {
+    "name": "crc32c",
+    "commit": "2bbb3be42e20a0e6c0f7b39dc07dc863d9ffbc07"
+  },
+  {
+    "name": "snappy",
+    "commit": "6af9287fbdb913f0794d0148c6aa43b58e63c8e3"
+  },
+  {
+    "name": "zlib",
+    "commit": "51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf"
+  },
+  {
+    "name": "zstd",
+    "commit": "f8745da6ff1ad1e7bab384bd1f9d742439278e99"
+  }
+]

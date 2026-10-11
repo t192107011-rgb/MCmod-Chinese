@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="cn.mcworld.translator.core.CoreTest" tests="25" skipped="0" failures="0" errors="0" timestamp="2026-10-11T05:25:37.544Z" hostname="4f9a15439b13" time="0.597">
+  <properties/>
+  <testcase name="zipCancellationCleansOnlyWorkCopy" classname="cn.mcworld.translator.core.CoreTest" time="0.048"/>
+  <testcase name="unknownCommandDoesNotExposeIdentifiers" classname="cn.mcworld.translator.core.CoreTest" time="0.004"/>
+  <testcase name="zipDuplicateUnicodeAndCaseRejected" classname="cn.mcworld.translator.core.CoreTest" time="0.006"/>
+  <testcase name="typedNbtEditPreservesOtherBytes" classname="cn.mcworld.translator.core.CoreTest" time="0.005"/>
+  <testcase name="legacyExecute" classname="cn.mcworld.translator.core.CoreTest" time="0.006"/>
+  <testcase name="jsonEscapeIsPreservedOutsideEditedText" classname="cn.mcworld.translator.core.CoreTest" time="0.034"/>
+  <testcase name="zipTraversalCannotCreateOutsideFiles" classname="cn.mcworld.translator.core.CoreTest" time="0.002"/>
+  <testcase name="nbtMultipleRoots" classname="cn.mcworld.translator.core.CoreTest" time="0.001"/>
+  <testcase name="zipExpandedSizeAndRatioLimited" classname="cn.mcworld.translator.core.CoreTest" time="0.008"/>
+  <testcase name="placeholdersCannotDisappearDuplicateOrReorder" classname="cn.mcworld.translator.core.CoreTest" time="0.007"/>
+  <testcase name="modernNestedExecute" classname="cn.mcworld.translator.core.CoreTest" time="0.0"/>
+  <testcase name="malformedRawtextRejected" classname="cn.mcworld.translator.core.CoreTest" time="0.001"/>
+  <testcase name="newlineInjectionRejected" classname="cn.mcworld.translator.core.CoreTest" time="0.001"/>
+  <testcase name="placeholdersRestored" classname="cn.mcworld.translator.core.CoreTest" time="0.001"/>
+  <testcase name="npcSelectorsResourceIdsAndMacroVariablesProtected" classname="cn.mcworld.translator.core.CoreTest" time="0.001"/>
+  <testcase name="defaultLargeFileCountRejectedBeforeExtraction" classname="cn.mcworld.translator.core.CoreTest" time="0.447"/>
+  <testcase name="zipFileCountAndDepthLimited" classname="cn.mcworld.translator.core.CoreTest" time="0.002"/>
+  <testcase name="corruptStoredEntryCrcRejected" classname="cn.mcworld.translator.core.CoreTest" time="0.002"/>
+  <testcase name="existingDestinationNeverDeleted" classname="cn.mcworld.translator.core.CoreTest" time="0.002"/>
+  <testcase name="unknownExecuteRemainsUntouched" classname="cn.mcworld.translator.core.CoreTest" time="0.0"/>
+  <testcase name="jsonFileSpansPreserveStructuralKeys" classname="cn.mcworld.translator.core.CoreTest" time="0.001"/>
+  <testcase name="rawtextPreservesStructureAndEscaping" classname="cn.mcworld.translator.core.CoreTest" time="0.002"/>
+  <testcase name="nbtTruncationDuplicateAndUnknownRejected" classname="cn.mcworld.translator.core.CoreTest" time="0.001"/>
+  <testcase name="nbtLengthAndPathValidation" classname="cn.mcworld.translator.core.CoreTest" time="0.008"/>
+  <testcase name="corruptArchiveRejected" classname="cn.mcworld.translator.core.CoreTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
