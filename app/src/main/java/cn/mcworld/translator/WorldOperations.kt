@@ -119,7 +119,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                 val checkpoint = state.entries.size
                 if (raw == null) state.issues += "db/$keyHex：记录超过 32 MiB，未修改"
                 else try {
-                    val record = LittleEndianNbt.parse(raw, maxNodes = 100_000)
+                    val record = LittleEndianNbt.parse(raw, maxNodes = 100_000, copyBytes = false)
                     val fields = record.texts.associateBy { it.path }
                     val before = state.entries.size
                     fun add(text: LittleEndianNbt.Text, mode: String = "text") {
