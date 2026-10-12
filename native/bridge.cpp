@@ -132,6 +132,39 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_cn_mcworld_translator_engine_Nati
     cursor->iterator->Next(); return out;
   } catch (const std::exception& e) { failure(env, e); return nullptr; }
 }
+extern "C" JNIEXPORT jobjectArray JNICALL Java_cn_mcworld_translator_engine_NativeBridge_nextTextCandidate(JNIEnv* env, jobject, jlong id) {
+  std::lock_guard<std::mutex> guard(lock);
+  try {
+    auto& cursor = lookup(cursors, id);
+    if (!cursor->iterator->Valid()) { status(cursor->iterator->status()); return nullptr; }
+    unsigned scanned = 0;
+    auto out = env->NewObjectArray(3, env->FindClass("[B"), nullptr);
+    while (scanned < 500 && cursor->iterator->Valid()) {
+      auto key = cursor->iterator->key();
+      ++scanned;
+      bool actor = key.starts_with("actorprefix");
+      bool player = key == "~local_player" || key.starts_with("player_server_");
+      bool chunk = (key.size() == 9 || key.size() == 13) &&
+          (static_cast<unsigned char>(key.data()[key.size() - 1]) == 0x31 ||
+           static_cast<unsigned char>(key.data()[key.size() - 1]) == 0x32);
+      if (actor || player || chunk) {
+        auto k = java_bytes(env, key); env->SetObjectArrayElement(out, 0, k); env->DeleteLocalRef(k);
+        if (cursor->iterator->value().size() <= 32 * 1024 * 1024) {
+          auto v = java_bytes(env, cursor->iterator->value()); env->SetObjectArrayElement(out, 1, v); env->DeleteLocalRef(v);
+        }
+        cursor->iterator->Next();
+        break;
+      }
+      cursor->iterator->Next();
+    }
+    status(cursor->iterator->status());
+    jbyte count[4] = {static_cast<jbyte>(scanned), static_cast<jbyte>(scanned >> 8),
+                      static_cast<jbyte>(scanned >> 16), static_cast<jbyte>(scanned >> 24)};
+    auto n = env->NewByteArray(4); env->SetByteArrayRegion(n, 0, 4, count);
+    env->SetObjectArrayElement(out, 2, n); env->DeleteLocalRef(n);
+    return out;
+  } catch (const std::exception& e) { failure(env, e); return nullptr; }
+}
 extern "C" JNIEXPORT void JNICALL Java_cn_mcworld_translator_engine_NativeBridge_closeCursor(JNIEnv*, jobject, jlong id) {
   std::lock_guard<std::mutex> guard(lock); cursors.erase(id);
 }
