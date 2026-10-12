@@ -44,6 +44,9 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
     var showIssues by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<TextEntry?>(null) }
     var draft by remember { mutableStateOf("") }
+    var batchSize by remember { mutableIntStateOf(500) }
+    var batchMenu by remember { mutableStateOf(false) }
+    var customBatch by remember { mutableStateOf("") }
     val notification = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     fun permitNotifications() { if (Build.VERSION.SDK_INT >= 33) notification.launch(Manifest.permission.POST_NOTIFICATIONS) }
     val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -59,7 +62,18 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
         }
     }
     val exportTable = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> if (uri != null) model.table(uri, false) }
-    val importTable = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) model.table(uri, true) }
+    val importTable = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) model.batchImport(listOf(uri))
+    }
+    val exportBatches = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+            model.batchExport(uri, batchSize)
+        }
+    }
+    val importBatches = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) model.batchImport(uris)
+    }
     Scaffold(topBar = { TopAppBar(title = { Text("Minecraft 地图汉化器") }) }) { insets ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(insets), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
@@ -109,8 +123,13 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                 }
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { importTable.launch(arrayOf("application/json", "text/plain")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导入翻译表") }
-                        OutlinedButton(onClick = { exportTable.launch("Minecraft翻译表.json") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导出翻译表") }
+                        OutlinedButton(onClick = { importTable.launch(arrayOf("application/json", "text/plain", "application/zip", "application/octet-stream")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导入翻译表") }
+                        OutlinedButton(onClick = {
+                            val estimated = state.entries.sumOf { it.json().toString().toByteArray(Charsets.UTF_8).size.toLong() }
+                            if (state.entries.size > batchSize || estimated > TranslationBatches.LIMIT - 4096)
+                                exportBatches.launch("Minecraft翻译表-分批.zip")
+                            else exportTable.launch("Minecraft翻译表.json")
+                        }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导出翻译表") }
                         Button(onClick = {
                             val base = state.sourceName.substringBeforeLast('.').ifBlank { "Minecraft地图" }
                                 .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").take(100)
@@ -118,7 +137,52 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                         }, enabled = !state.busy && state.entries.isNotEmpty() &&
                             !(state.activeOperation == "extract" && state.stage != "提取完成")) { Text("验证并导出地图") }
                     }
+                    Text("翻译表管理", style = MaterialTheme.typography.titleSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box {
+                            OutlinedButton(onClick = { batchMenu = true }, enabled = !state.busy) { Text("每批 $batchSize 条") }
+                            DropdownMenu(expanded = batchMenu, onDismissRequest = { batchMenu = false }) {
+                                listOf(100, 250, 500, 1000).forEach { value ->
+                                    DropdownMenuItem(text = { Text("$value 条") }, onClick = { batchSize = value; batchMenu = false })
+                                }
+                                DropdownMenuItem(text = { Text("自定义") }, onClick = { batchMenu = false; customBatch = batchSize.toString() })
+                            }
+                        }
+                        OutlinedButton(onClick = { exportBatches.launch("Minecraft翻译表-分批.zip") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("分批导出翻译表") }
+                    }
+                    if (customBatch.isNotEmpty()) {
+                        OutlinedTextField(value = customBatch, onValueChange = { value ->
+                            customBatch = value.filter(Char::isDigit).take(4)
+                            customBatch.toIntOrNull()?.takeIf { it in 1..1000 }?.let { batchSize = it }
+                        }, label = { Text("自定义每批记录数（1–1000）") }, singleLine = true)
+                    }
+                    OutlinedButton(onClick = { importBatches.launch(arrayOf("application/json", "application/zip", "application/octet-stream")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("批量导入翻译表") }
+                    OutlinedButton(onClick = { model.enqueue("table-check") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("检查翻译表") }
+                    if (state.stage == "批量导入预览" && !state.busy) {
+                        Text(state.progress)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { model.batchImport(emptyList(), "keep") }) { Text("保留当前译文") }
+                            OutlinedButton(onClick = { model.batchImport(emptyList(), "replace") }) { Text("使用新译文") }
+                            OutlinedButton(onClick = { model.batchImport(emptyList(), "valid-only") }) { Text("仅导入有效记录") }
+                            OutlinedButton(onClick = { model.batchImport(emptyList(), "custom") }) { Text("按逐条选择导入") }
+                        }
+                    }
                     Text("待处理、失败和选择保留的项目会原样导出；不会标记为翻译成功。", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (state.stage == "批量导入预览") items(state.importConflicts, key = { "conflict-${it.id}" }) { conflict ->
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("冲突：${conflict.original}")
+                        Text("当前：${conflict.current}")
+                        Text("新译文：${conflict.incoming}")
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(selected = state.conflictChoices[conflict.id] != true,
+                                onClick = { model.chooseConflict(conflict.id, false) }, label = { Text("保留当前") })
+                            FilterChip(selected = state.conflictChoices[conflict.id] == true,
+                                onClick = { model.chooseConflict(conflict.id, true) }, label = { Text("使用新译文") })
+                        }
+                    }
                 }
             }
             if (state.export.isNotEmpty() && !state.busy) item {
