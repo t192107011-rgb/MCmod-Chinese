@@ -101,11 +101,15 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                             if (state.progressTotal > 0) {
                                 LinearProgressIndicator(progress = { (state.progressCurrent.toFloat() / state.progressTotal).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
                                 val percent = (state.progressCurrent * 100 / state.progressTotal).coerceIn(0, 100)
-                                Text("$percent% · ${state.progressCurrent} / ${state.progressTotal} ${when {
-                                    state.progress.contains("资源文件") -> "个资源文件"
-                                    state.edition == "java" -> "个区域区块"
-                                    else -> "条数据库记录"
-                                }}")
+                                if (state.activeOperation == "export") {
+                                    Text("$percent% · 导出地图")
+                                } else {
+                                    Text("$percent% · ${state.progressCurrent} / ${state.progressTotal} ${when {
+                                        state.progress.contains("资源文件") -> "个资源文件"
+                                        state.edition == "java" -> "个区域区块"
+                                        else -> "条数据库记录"
+                                    }}")
+                                }
                             } else LinearProgressIndicator(Modifier.fillMaxWidth())
                             OutlinedButton(onClick = model::pause) { Text("暂停任务") }
                         }
