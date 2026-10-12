@@ -58,21 +58,32 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
             changes.forEach { (id, value) -> indexed.getValue(id).apply { translation = value; status = "手动修改"; reason = "从翻译表导入" } }
             state.stage = "翻译表导入完成"; state.progress = "已验证并导入 ${changes.size} 项译文"
         } else {
-            val bytes = state.json().toString(2).toByteArray()
-            require(bytes.size <= 8 * 1024 * 1024) { "翻译表超过 8 MiB；请使用分批地图" }
             val document = DocumentFile.fromSingleUri(context, uri) ?: error("翻译表文档不可用")
-            require(document.length() == 0L && document.canWrite()) { "导出目标必须是新建空文档" }
+            val metadata = JSONObject()
+                .put("id", state.id).put("world", state.world).put("language", state.language)
+                .put("stage", state.stage).put("progress", state.progress).put("busy", state.busy)
+                .put("export", state.export).put("issues", org.json.JSONArray(state.issues))
+                .put("conflictChoices", JSONObject(state.conflictChoices as Map<*, *>))
+                .put("importConflicts", org.json.JSONArray(state.importConflicts.map { it.json() }))
+                .put("sourceName", state.sourceName).put("progressCurrent", state.progressCurrent)
+                .put("progressTotal", state.progressTotal)
+                .put("extractedRecords", JSONObject(state.extractedRecords.mapKeys { it.key.toString() }))
+                .put("activeOperation", state.activeOperation)
+                .put("resourceDone", org.json.JSONArray(state.resourceDone.toList()))
+                .put("sourceLanguages", org.json.JSONArray(state.sourceLanguages.toList()))
             try {
-                (resolver.openOutputStream(uri, "wt") ?: error("翻译表不可写")).use { output ->
-                    var offset = 0
-                    while (offset < bytes.size) {
+                (resolver.openOutputStream(uri, "w") ?: error("翻译表不可写")).bufferedWriter(Charsets.UTF_8).use { writer ->
+                    writer.write(metadata.toString().dropLast(1))
+                    writer.write(",\"entries\":[")
+                    for ((index, entry) in state.entries.withIndex()) {
                         currentCoroutineContext().ensureActive()
-                        val count = minOf(64 * 1024, bytes.size - offset)
-                        output.write(bytes, offset, count); offset += count
+                        if (index > 0) writer.write(",")
+                        writer.write(entry.json().toString())
                     }
+                    writer.write("]}")
                 }
             } catch (failure: Throwable) { runCatching { document.delete() }; throw failure }
-            state.stage = "翻译表已导出"; state.progress = "包含原文、译文、来源与处理状态"
+            state.stage = "翻译表已导出"; state.progress = "单个 JSON，包含 ${state.entries.size} 项原文、译文、来源与处理状态"
         }
     }
     suspend fun checkTable(state: ProjectState) {
