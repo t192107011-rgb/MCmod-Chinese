@@ -41,9 +41,16 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
                     initialStore.save(initial)
                 }
             }
+            var observedStore = initialStore
+            var observedVersion = -1L
             while (true) {
-                val state = store.read()
-                mutable.value = state
+                val activeStore = store
+                val version = activeStore.stateVersion()
+                if (activeStore !== observedStore || version != observedVersion) {
+                    mutable.value = activeStore.read()
+                    observedStore = activeStore
+                    observedVersion = version
+                }
                 delay(750)
             }
         }
