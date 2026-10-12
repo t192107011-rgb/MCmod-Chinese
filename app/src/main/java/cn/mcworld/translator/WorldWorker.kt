@@ -97,7 +97,24 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
                 "export" -> {
                     val archive = WorldOperations(applicationContext, store).export(state)
                     val uri = inputData.getString("destination")
-                    if (uri != null) SafWorkingCopy(applicationContext).exportToNewDocument(archive, Uri.parse(uri))
+                    if (uri != null) {
+                        val total = archive.length().coerceAtLeast(1L)
+                        var lastReport = 0L
+                        store.writeProgress("导出最后一步：正在写入所选文件", 950L, 1000L)
+                        SafWorkingCopy(applicationContext).exportToNewDocument(archive, Uri.parse(uri)) { bytes ->
+                            val now = System.currentTimeMillis()
+                            if (bytes == archive.length() || now - lastReport >= 1000) {
+                                val point = (950 + bytes * 50 / total).coerceIn(950, 1000)
+                                store.writeProgress("导出最后一步：已写入 ${bytes / 1024 / 1024} MiB", point, 1000)
+                                lastReport = now
+                            }
+                        }
+                    }
+                    state.progressCurrent = 1000
+                    state.progressTotal = 1000
+                    state.stage = "地图已导出"
+                    state.progress = "已写入所选文件并通过完整性校验"
+                    store.clearProgress()
                 }
             }
             state.busy = false; state.activeOperation = ""; store.save(state)
