@@ -35,7 +35,17 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
                 .setSmallIcon(android.R.drawable.stat_sys_download).setOngoing(true).build()
             setForeground(if (Build.VERSION.SDK_INT >= 29) ForegroundInfo(projectId.hashCode(), notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
                 else ForegroundInfo(projectId.hashCode(), notification))
-            state.stage = when (operation) { "import" -> "导入和验证中"; "extract" -> "提取中"; "translate" -> "离线翻译中"; "export" -> "写回及导出验证中"; "table-import" -> "翻译表导入中"; "table-export" -> "翻译表导出中"; else -> error("不支持的任务") }
+            state.stage = when (operation) {
+                "import" -> "导入和验证中"
+                "extract" -> "提取中"
+                "export" -> "写回及导出验证中"
+                "table-import" -> "翻译表导入中"
+                "table-export" -> "翻译表导出中"
+                "batch-import" -> "批量导入中"
+                "batch-export" -> "分批导出中"
+                "table-check" -> "检查翻译表中"
+                else -> error("不支持的任务")
+            }
             store.save(state)
             when (operation) {
                 "import" -> {
@@ -73,36 +83,6 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
                 "batch-import" -> WorldOperations(applicationContext, store).batchImport(state,
                     requireNotNull(inputData.getStringArray("tableUris")).map(Uri::parse),
                     inputData.getString("resolution") ?: "preview")
-                "translate" -> {
-                    val selected = inputData.getString("entry")
-                    val entries = state.entries.filter { (selected == null || it.id == selected) && it.status !in setOf("保留原文", "手动修改") }
-                    OfflineTranslator(applicationContext).use { engine ->
-                        for ((index, entry) in entries.withIndex()) {
-                            currentCoroutineContext().ensureActive()
-                            try {
-                                val resourceLanguage = when (entry.file.substringAfterLast('/').substringBeforeLast('.')) {
-                                    "en_US", "en_GB" -> "en"
-                                    "ru_RU" -> "ru"
-                                    "de_DE" -> "de"
-                                    "fr_FR" -> "fr"
-                                    "es_ES" -> "es"
-                                    else -> state.language
-                                }
-                                val translated = engine.translate(entry.original, resourceLanguage)
-                                if (translated == entry.original) {
-                                    entry.translation = ""; entry.status = "保留原文"; entry.reason = "没有可翻译的自然语言"
-                                } else {
-                                    entry.translation = translated; entry.status = "自动翻译"; entry.reason = ""
-                                    WorldOperations(applicationContext, store).validate(entry)
-                                }
-                            } catch (cancelled: CancellationException) { throw cancelled }
-                            catch (failure: Exception) { entry.translation = ""; entry.status = "失败"; entry.reason = failure.message ?: "推理失败" }
-                            state.progress = "${index + 1}/${entries.size}；失败项目保留原文"
-                            store.save(state)
-                        }
-                    }
-                    state.stage = "翻译结束，等待审阅"
-                }
                 "export" -> {
                     val archive = WorldOperations(applicationContext, store).export(state)
                     val uri = inputData.getString("destination")
@@ -114,7 +94,7 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
         } catch (cancelled: CancellationException) {
             if (operation == "import") temporaryImports.forEach { it.deleteRecursively() }
             state.busy = false
-            state.stage = if (operation in setOf("translate", "extract")) "任务已暂停" else "任务已取消"
+            state.stage = if (operation == "extract") "任务已暂停" else "任务已取消"
             state.progress = if (operation == "extract") {
                 store.clearProgress()
                 state.progressCurrent = state.extractedRecords.values.sum()
@@ -129,3 +109,4 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
         }
     }
 }
+

@@ -24,39 +24,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
     suspend fun table(state: ProjectState, uri: Uri, importing: Boolean) {
         val resolver = context.contentResolver
         if (importing) {
-            val bytes = (resolver.openInputStream(uri) ?: error("翻译表访问权限已失效")).use { input ->
-                val output = java.io.ByteArrayOutputStream()
-                val buffer = ByteArray(64 * 1024)
-                while (true) {
-                    currentCoroutineContext().ensureActive()
-                    val count = input.read(buffer); if (count < 0) break
-                    require(output.size() + count <= 8 * 1024 * 1024) { "翻译表超过 8 MiB" }
-                    output.write(buffer, 0, count)
-                }
-                output.toByteArray()
-            }
-            val source = Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString()
-            DisplayCommand.jsonStrings(source)
-            val rows = JSONObject(source).getJSONArray("entries")
-            require(rows.length() <= 100_000)
-            val indexed = state.entries.associateBy { it.id }
-            val changes = linkedMapOf<String, String>()
-            val seen = mutableSetOf<String>()
-            for (i in 0 until rows.length()) {
-                currentCoroutineContext().ensureActive()
-                val row = rows.getJSONObject(i)
-                val id = row.getString("id")
-                require(seen.add(id)) { "翻译表包含重复项目" }
-                val entry = indexed[id] ?: error("翻译表包含不属于当前地图的项目")
-                require(row.getString("original") == entry.original) { "翻译表原文不匹配" }
-                val text = row.getString("translation")
-                if (text.isBlank()) continue
-                val candidate = entry.copy(translation = text, status = "手动修改")
-                validate(candidate)
-                changes[id] = text
-            }
-            changes.forEach { (id, value) -> indexed.getValue(id).apply { translation = value; status = "手动修改"; reason = "从翻译表导入" } }
-            state.stage = "翻译表导入完成"; state.progress = "已验证并导入 ${changes.size} 项译文"
+            batchImport(state, listOf(uri))
         } else {
             val document = DocumentFile.fromSingleUri(context, uri) ?: error("翻译表文档不可用")
             val metadata = JSONObject()
@@ -105,9 +73,8 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
 
     suspend fun batchExport(state: ProjectState, uri: Uri, size: Int) {
         val document = DocumentFile.fromSingleUri(context, uri) ?: error("目标文档不可用")
-        require(document.length() == 0L && document.canWrite()) { "导出目标必须是新建空文档" }
         try {
-            (context.contentResolver.openOutputStream(uri, "wt") ?: error("无法写入 ZIP")).use { output ->
+            (context.contentResolver.openOutputStream(uri, "w") ?: error("无法写入 ZIP")).use { output ->
                 TranslationBatches.export(state, size, output) { state.progress = it }
             }
         } catch (failure: Throwable) { runCatching { document.delete() }; throw failure }
@@ -130,8 +97,9 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         if (resolution == "preview") {
             state.conflictChoices.clear()
             state.importConflicts.clear()
+            val indexed = state.entries.associateBy { it.id }
             state.importConflicts.addAll(preview.conflicts.map { proposal ->
-                val old = state.entries.single { it.id == proposal.id }
+                val old = indexed.getValue(proposal.id)
                 ImportConflict(proposal.id, old.original, old.translation, proposal.translation)
             })
             state.stage = "批量导入预览"
@@ -546,3 +514,4 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         finally { target.deleteRecursively(); restored.deleteRecursively() }
     }
 }
+

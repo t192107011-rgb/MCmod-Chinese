@@ -138,10 +138,6 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
         entry.translation = value; entry.status = "手动修改"; entry.reason = "待导出校验"
     } }
     fun keep(id: String) { update { state -> state.entries.single { it.id == id }.apply { translation = ""; status = "保留原文"; reason = "用户选择" } } }
-    fun retranslate(id: String) {
-        update { state -> state.entries.single { it.id == id }.apply { status = "待处理"; translation = ""; reason = "" } }
-        enqueue("translate", "entry" to id)
-    }
     private fun update(change: (ProjectState) -> Unit) {
         if (mutable.value.busy) return
         try { val state = store.read(); change(state); store.save(state); mutable.value = state }
@@ -184,3 +180,4 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 }
+

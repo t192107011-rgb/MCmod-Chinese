@@ -29,25 +29,10 @@ class DeviceReadinessTest {
         instrumentation.runOnMainSync { activity.finish() }
     }
 
-    @Test fun actualOfflineInferenceFiveLanguages(): Unit = runBlocking {
-        withContext(Dispatchers.IO) {
-            val permissions = context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
-            assertFalse("APK must have no INTERNET permission", "android.permission.INTERNET" in permissions)
-            val samples = mapOf("en" to "Find the key and open the door.",
-                "ru" to "Найдите ключ и откройте дверь.", "de" to "Finde den Schlüssel und öffne die Tür.",
-                "fr" to "Trouvez la clé et ouvrez la porte.", "es" to "Encuentra la llave y abre la puerta.")
-            OfflineTranslator(context).use { translator ->
-                for ((lang, text) in samples) {
-                    val result = translator.translate(text, lang)
-                    assertTrue(result, result.any { it in '\u4e00'..'\u9fff' })
-                    assertNotEquals(text, result)
-                    Log.i("MCWT_TEST", "$lang: $text -> $result")
-                }
-                val formatted = translator.translate("§aFind the key %s\nOpen the door", "en")
-                assertTrue(formatted.startsWith("§a")); assertTrue(formatted.contains("%s\n"))
-                Log.i("MCWT_TEST", "Protected output: $formatted")
-            }
-        }
+    @Test fun noNetworkPermission() {
+        val permissions = context.packageManager.getPackageInfo(context.packageName,
+            android.content.pm.PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
+        assertFalse("APK must have no INTERNET permission", "android.permission.INTERNET" in permissions)
     }
 
     @Test fun realBedrockFixtureWriteExportAndReread(): Unit = runBlocking {
@@ -94,3 +79,4 @@ class DeviceReadinessTest {
         assertEquals(command.replace("Hello %s", "你好 %s"), plan.rewrite(mapOf(0 to "你好 %s")))
     }
 }
+

@@ -12,8 +12,5 @@ object NativeBridge {
     external fun nextTextCandidate(cursor: Long): Array<ByteArray?>?
     external fun closeCursor(cursor: Long)
     external fun write(handle: Long, keys: Array<ByteArray>, originals: Array<ByteArray>, replacements: Array<ByteArray>)
-    external fun openSp(path: String): Long
-    external fun closeSp(handle: Long)
-    external fun encode(handle: Long, input: String): Array<String>
-    external fun decode(handle: Long, pieces: Array<String>): String
 }
+

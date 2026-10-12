@@ -1,7 +1,6 @@
 #include <jni.h>
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
-#include <sentencepiece_processor.h>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -22,7 +21,6 @@ struct Cursor {
 };
 std::unordered_map<jlong, std::shared_ptr<Database>> databases;
 std::unordered_map<jlong, std::unique_ptr<Cursor>> cursors;
-std::unordered_map<jlong, std::unique_ptr<sentencepiece::SentencePieceProcessor>> tokenizers;
 void failure(JNIEnv* env, const std::exception& e) { env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), e.what()); }
 void status(const leveldb::Status& s) { if (!s.ok()) throw std::runtime_error(s.ToString()); }
 std::string text(JNIEnv* env, jstring input) {
@@ -48,26 +46,6 @@ std::string text(JNIEnv* env, jstring input) {
   }
   env->ReleaseStringChars(input, data);
   return result;
-}
-jstring java_text(JNIEnv* env, const std::string& s) {
-  std::vector<jchar> out;
-  for (size_t i = 0; i < s.size();) {
-    uint32_t c = static_cast<unsigned char>(s[i++]);
-    int continuation = 0;
-    uint32_t minimum = 0;
-    if (c >= 0xf0 && c <= 0xf4) { c &= 7; continuation = 3; minimum = 0x10000; }
-    else if (c >= 0xe0 && c <= 0xef) { c &= 15; continuation = 2; minimum = 0x800; }
-    else if (c >= 0xc2 && c <= 0xdf) { c &= 31; continuation = 1; minimum = 0x80; }
-    else if (c >= 0x80) throw std::runtime_error("Invalid UTF-8");
-    for (int j = 0; j < continuation; ++j) {
-      if (i >= s.size() || (static_cast<unsigned char>(s[i]) & 0xc0) != 0x80) throw std::runtime_error("Invalid UTF-8");
-      c = (c << 6) | (static_cast<unsigned char>(s[i++]) & 63);
-    }
-    if (c < minimum || c > 0x10ffff || (c >= 0xd800 && c <= 0xdfff)) throw std::runtime_error("Invalid UTF-8 codepoint");
-    if (c > 0xffff) { c -= 0x10000; out.push_back(0xd800 + (c >> 10)); out.push_back(0xdc00 + (c & 1023)); }
-    else out.push_back(static_cast<jchar>(c));
-  }
-  return env->NewString(out.data(), static_cast<jsize>(out.size()));
 }
 std::string bytes(JNIEnv* env, jbyteArray array) {
   if (!array) throw std::runtime_error("Missing bytes");
@@ -218,34 +196,4 @@ extern "C" JNIEXPORT void JNICALL Java_cn_mcworld_translator_engine_NativeBridge
     }
     leveldb::WriteOptions options; options.sync = true; status(db->db->Write(options, &batch));
   } catch (const std::exception& e) { failure(env, e); }
-}
-extern "C" JNIEXPORT jlong JNICALL Java_cn_mcworld_translator_engine_NativeBridge_openSp(JNIEnv* env, jobject, jstring path) {
-  std::lock_guard<std::mutex> guard(lock);
-  try {
-    auto sp = std::make_unique<sentencepiece::SentencePieceProcessor>();
-    auto result = sp->Load(text(env, path)); if (!result.ok()) throw std::runtime_error(result.ToString());
-    auto id = next_id++; tokenizers[id] = std::move(sp); return id;
-  } catch (const std::exception& e) { failure(env, e); return 0; }
-}
-extern "C" JNIEXPORT void JNICALL Java_cn_mcworld_translator_engine_NativeBridge_closeSp(JNIEnv*, jobject, jlong id) {
-  std::lock_guard<std::mutex> guard(lock); tokenizers.erase(id);
-}
-extern "C" JNIEXPORT jobjectArray JNICALL Java_cn_mcworld_translator_engine_NativeBridge_encode(JNIEnv* env, jobject, jlong id, jstring input) {
-  std::lock_guard<std::mutex> guard(lock);
-  try {
-    std::vector<std::string> pieces;
-    auto result = lookup(tokenizers, id)->Encode(text(env, input), &pieces); if (!result.ok()) throw std::runtime_error(result.ToString());
-    auto out = env->NewObjectArray(static_cast<jsize>(pieces.size()), env->FindClass("java/lang/String"), nullptr);
-    for (size_t i = 0; i < pieces.size(); ++i) { auto s = java_text(env, pieces[i]); env->SetObjectArrayElement(out, i, s); env->DeleteLocalRef(s); }
-    return out;
-  } catch (const std::exception& e) { failure(env, e); return nullptr; }
-}
-extern "C" JNIEXPORT jstring JNICALL Java_cn_mcworld_translator_engine_NativeBridge_decode(JNIEnv* env, jobject, jlong id, jobjectArray input) {
-  std::lock_guard<std::mutex> guard(lock);
-  try {
-    std::vector<std::string> pieces;
-    for (jsize i = 0; i < env->GetArrayLength(input); ++i) { auto s = static_cast<jstring>(env->GetObjectArrayElement(input, i)); pieces.push_back(text(env, s)); env->DeleteLocalRef(s); }
-    std::string output; auto result = lookup(tokenizers, id)->Decode(pieces, &output); if (!result.ok()) throw std::runtime_error(result.ToString());
-    return java_text(env, output);
-  } catch (const std::exception& e) { failure(env, e); return nullptr; }
 }

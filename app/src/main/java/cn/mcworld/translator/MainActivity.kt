@@ -61,7 +61,12 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
             model.enqueue("export", "destination" to uri.toString())
         }
     }
-    val exportTable = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> if (uri != null) model.table(uri, false) }
+    val exportTable = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+            model.table(uri, false)
+        }
+    }
     val importTable = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) model.batchImport(listOf(uri))
     }
@@ -77,9 +82,9 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
     Scaffold(topBar = { TopAppBar(title = { Text("Minecraft 地图汉化器") }) }) { insets ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(insets), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
-                Text("选择地图 → 验证 → 选择语言 → 提取 → 翻译 → 审阅 → 验证导出", style = MaterialTheme.typography.bodyMedium)
+                Text("选择地图 → 验证 → 选择语言 → 提取 → 导入译文 → 审阅 → 验证导出", style = MaterialTheme.typography.bodyMedium)
                 Text("完全离线 · 仅编辑工作副本", color = MaterialTheme.colorScheme.primary)
-                Text("模型已内置；俄、德、法、西经英语中转。初次使用会从 APK 解包模型，请预留约 2 GiB 空间。", style = MaterialTheme.typography.bodySmall)
+                Text("提取原文后可导出 JSON 翻译表，在外部填写译文，再导入并校验。", style = MaterialTheme.typography.bodySmall)
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -117,13 +122,11 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                             enabled = !state.busy && (state.entries.isEmpty() || state.activeOperation == "extract" && state.stage in setOf("任务已暂停", "任务中断，可重新处理", "任务失败"))) {
                             Text(if (state.activeOperation == "extract") "继续提取" else "提取文字")
                         }
-                        Button(onClick = { model.enqueue("translate") }, enabled = !state.busy && state.entries.isNotEmpty() &&
-                            !(state.activeOperation == "extract" && state.stage != "提取完成")) { Text("自动翻译") }
                     }
                 }
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { importTable.launch(arrayOf("application/json", "text/plain", "application/zip", "application/octet-stream")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导入翻译表") }
+                        OutlinedButton(onClick = { importTable.launch(arrayOf("*/*")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导入翻译表") }
                         OutlinedButton(onClick = { exportTable.launch("Minecraft翻译表.json") },
                             enabled = !state.busy && state.entries.isNotEmpty()) { Text("导出翻译表") }
                         Button(onClick = {
@@ -152,7 +155,7 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                             customBatch.toIntOrNull()?.takeIf { it in 1..1000 }?.let { batchSize = it }
                         }, label = { Text("自定义每批记录数（1–1000）") }, singleLine = true)
                     }
-                    OutlinedButton(onClick = { importBatches.launch(arrayOf("application/json", "application/zip", "application/octet-stream")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("批量导入翻译表") }
+                    OutlinedButton(onClick = { importBatches.launch(arrayOf("*/*")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("批量导入翻译表") }
                     OutlinedButton(onClick = { model.enqueue("table-check") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("检查翻译表") }
                     if (state.stage == "批量导入预览" && !state.busy) {
                         Text(state.progress)
@@ -214,7 +217,6 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                             color = if (entry.status == "失败") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { selected = entry; draft = entry.translation.ifBlank { entry.original } }, enabled = !state.busy) { Text("编辑") }
-                            TextButton(onClick = { model.retranslate(entry.id) }, enabled = !state.busy) { Text("重新翻译") }
                             TextButton(onClick = { model.keep(entry.id) }, enabled = !state.busy) { Text("保留原文") }
                         }
                     }
@@ -236,3 +238,4 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
 
 @Composable
 private fun rememberSaveableState(): MutableState<String> = androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+

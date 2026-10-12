@@ -5,8 +5,10 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.PushbackInputStream
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
+import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -20,8 +22,22 @@ object TranslationBatches {
     data class Preview(val changes: List<Proposed>, val conflicts: List<Proposed>, val errors: List<String>, val skipped: Int)
 
     private fun bytes(document: JSONObject) = document.toString().toByteArray(Charsets.UTF_8)
+    private fun sourceHash(rows: JSONArray): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val fields = listOf("id", "original", "location", "recordKey", "path", "file", "start", "end", "mode", "span")
+        for (i in 0 until rows.length()) {
+            val row = rows.getJSONObject(i)
+            for (field in fields) {
+                val value = row.get(field).toString().toByteArray(Charsets.UTF_8)
+                digest.update(ByteBuffer.allocate(4).putInt(value.size).array())
+                digest.update(value)
+            }
+        }
+        return hex(digest.digest())
+    }
     fun export(state: ProjectState, batchSize: Int, output: OutputStream, progress: (String) -> Unit = {}) {
         require(batchSize in 1..1000)
+        require((state.entries.size.toLong() + batchSize - 1) / batchSize < MAX_FILES) { "批次数量过多，请增大每批记录数" }
         val manifest = JSONObject().put("formatVersion", 2).put("projectId", state.id)
             .put("totalEntries", state.entries.size).put("batchSize", batchSize)
             .put("targetLanguage", "zh-CN")
@@ -34,6 +50,7 @@ object TranslationBatches {
             var index = 0
             var batch = 0
             while (index < state.entries.size) {
+                require(batch < MAX_FILES - 1) { "实际批次数量过多，请增大每批记录数" }
                 val start = index
                 val buffer = ByteArrayOutputStream()
                 buffer.write(prefix)
@@ -55,7 +72,8 @@ object TranslationBatches {
                 val name = "翻译表_%03d.json".format(batch)
                 zip.putNextEntry(ZipEntry(name)); zip.write(data); zip.closeEntry()
                 batches.put(JSONObject().put("file", name).put("startIndex", start)
-                    .put("endIndex", index - 1).put("count", count).put("sha256", sha(data)))
+                    .put("endIndex", index - 1).put("count", count).put("sha256", sha(data))
+                    .put("sourceSha256", sourceHash(JSONArray(state.entries.subList(start, index).map { it.json() }))))
                 progress("已导出 $index/${state.entries.size} 项")
             }
             manifest.put("totalBatches", batch).put("batches", batches)
@@ -84,9 +102,14 @@ object TranslationBatches {
         val documents = mutableListOf<JSONObject>()
         val errors = mutableListOf<String>()
         for ((filename, stream) in inputs) {
-            stream.use { source ->
+            PushbackInputStream(stream.buffered(), 4).use { source ->
                 try {
-                    if (filename.endsWith(".zip", true)) {
+                    val signature = ByteArray(4)
+                    val length = source.read(signature)
+                    if (length > 0) source.unread(signature, 0, length)
+                    val isZip = length == 4 && signature[0] == 'P'.code.toByte() &&
+                        signature[1] == 'K'.code.toByte() && signature[2] == 3.toByte() && signature[3] == 4.toByte()
+                    if (isZip) {
                         val parts = linkedMapOf<String, ByteArray>()
                         var totalBytes = 0L
                         ZipInputStream(source.buffered()).use { zip ->
@@ -105,33 +128,46 @@ object TranslationBatches {
                         if (manifest != null) {
                             require(manifest.getInt("formatVersion") == 2)
                             val batchList = manifest.getJSONArray("batches")
-                            require(batchList.length() == manifest.getInt("totalBatches") && parts.size == batchList.length()) { "批次缺失或包含多余文件" }
+                            require(batchList.length() == manifest.getInt("totalBatches")) { "清单批次数量不一致" }
                             require(batchList.length() <= MAX_FILES)
                             var count = 0
                             val staged = mutableListOf<JSONObject>()
                             val names = mutableSetOf<String>()
+                            val ids = mutableSetOf<String>()
                             for (i in 0 until batchList.length()) {
                                 val batch = batchList.getJSONObject(i)
                                 val name = batch.getString("file")
-                                require(names.add(name)) { "清单文件名重复" }
-                                val data = parts[name] ?: error("缺少 $name")
-                                require(sha(data) == batch.getString("sha256")) { "$name SHA-256 不匹配" }
-                                val doc = decode(data)
-                                require(doc.getString("id") == manifest.getString("projectId")) { "$name 项目不匹配" }
-                                require(doc.getJSONArray("entries").length() == batch.getInt("count")) { "$name 记录数不匹配" }
-                                count += batch.getInt("count")
-                                staged += doc
+                                if (!names.add(name)) { errors += "清单文件名重复：$name"; continue }
+                                try {
+                                    val data = parts[name] ?: error("缺少 $name")
+                                    val doc = decode(data)
+                                    require(doc.getString("id") == manifest.getString("projectId")) { "项目不匹配" }
+                                    val rows = doc.getJSONArray("entries")
+                                    require(rows.length() == batch.getInt("count")) { "记录数不匹配" }
+                                    // SHA-256 of the full file changes when translations are edited.
+                                    // The immutable source digest remains valid after translation.
+                                    if (batch.has("sourceSha256"))
+                                        require(sourceHash(rows) == batch.getString("sourceSha256")) { "原文或记录路径校验失败" }
+                                    val localIds = mutableSetOf<String>()
+                                    for (j in 0 until rows.length()) {
+                                        val id = rows.getJSONObject(j).getString("id")
+                                        require(localIds.add(id) && id !in ids) { "批次间记录 ID 重复" }
+                                    }
+                                    ids.addAll(localIds)
+                                    count += rows.length()
+                                    staged += doc
+                                } catch (failure: Exception) { errors += "$name：${failure.message}" }
                             }
-                            require(count == manifest.getInt("totalEntries") && names == parts.keys) { "记录总数或文件清单不匹配" }
-                            val ids = mutableSetOf<String>()
-                            staged.forEach { doc ->
-                                val rows = doc.getJSONArray("entries")
-                                for (j in 0 until rows.length()) require(ids.add(rows.getJSONObject(j).getString("id"))) { "批次内记录 ID 重复" }
-                            }
+                            if (count != manifest.getInt("totalEntries")) errors += "记录总数不完整：$count / ${manifest.getInt("totalEntries")}"
+                            for (extra in parts.keys - names) errors += "清单未列出 $extra"
                             documents += staged
                         } else {
-                            for ((name, data) in parts) if (name.endsWith(".json", true)) documents += decode(data)
-                            else errors += "忽略 $name"
+                            for ((name, data) in parts) {
+                                if (name.endsWith(".json", true)) {
+                                    runCatching { decode(data) }.onSuccess { documents += it }
+                                        .onFailure { errors += "$name：${it.message}" }
+                                } else errors += "忽略 $name"
+                            }
                         }
                     } else documents += decode(read(source, MAX_TOTAL.toInt()))
                 } catch (failure: Exception) { errors += "$filename：${failure.message}" }
@@ -142,7 +178,7 @@ object TranslationBatches {
 
     fun preview(state: ProjectState, documents: List<JSONObject>, initialErrors: List<String>, validate: (TextEntry) -> Unit): Preview {
         val indexed = state.entries.associateBy { it.id }
-        val seen = mutableMapOf<String, String>()
+        val seen = mutableSetOf<String>()
         val changes = mutableListOf<Proposed>()
         val conflicts = mutableListOf<Proposed>()
         val errors = initialErrors.toMutableList()
@@ -156,6 +192,7 @@ object TranslationBatches {
                     try {
                         val row = rows.getJSONObject(i)
                         val id = row.getString("id")
+                        require(seen.add(id)) { "重复记录 ID" }
                         val entry = indexed[id] ?: error("记录 ID 不属于当前地图")
                         require(row.getString("original") == entry.original) { "原文不匹配" }
                         // Verify all structural metadata when present; older tables may omit these fields.
@@ -168,10 +205,7 @@ object TranslationBatches {
                         if (row.has("mode")) require(row.getString("mode") == entry.mode) { "文本模式不匹配" }
                         if (row.has("span")) require(row.getInt("span") == entry.span) { "命令片段不匹配" }
                         val value = row.getString("translation")
-                        val previous = seen[id]
-                        require(previous == null || previous == value) { "不同批次的译文冲突" }
-                        if (previous != null || value.isBlank()) { skipped++; continue }
-                        seen[id] = value
+                        if (value.isBlank()) { skipped++; continue }
                         validate(entry.copy(translation = value, status = "手动修改"))
                         if (value == entry.original) {
                             if (row.optString("status") != "保留原文")
@@ -190,3 +224,4 @@ object TranslationBatches {
         return Preview(changes, conflicts, errors, skipped)
     }
 }
+
