@@ -79,8 +79,11 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                         Text(state.stage, style = MaterialTheme.typography.titleMedium)
                         Text(state.progress)
                         if (state.busy) {
-                            LinearProgressIndicator(Modifier.fillMaxWidth())
-                            OutlinedButton(onClick = model::cancel) { Text("取消任务") }
+                            if (state.progressTotal > 0 && !state.progress.contains("正在检查资源文件")) {
+                                LinearProgressIndicator(progress = { (state.progressCurrent.toFloat() / state.progressTotal).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+                                Text("${state.progressCurrent} / ${state.progressTotal} 条数据库记录")
+                            } else LinearProgressIndicator(Modifier.fillMaxWidth())
+                            OutlinedButton(onClick = model::pause) { Text("暂停任务") }
                         }
                         if (message.isNotEmpty()) Text(message, color = MaterialTheme.colorScheme.primary)
                     }
@@ -88,6 +91,7 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
             }
             if (state.world.isNotEmpty()) {
                 item {
+                    if (state.sourceName.isNotBlank()) Text("地图：${state.sourceName}")
                     Text("原文语言", style = MaterialTheme.typography.titleSmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("en" to "英语", "ru" to "俄语", "de" to "德语", "fr" to "法语", "es" to "西班牙语").forEach { (value, label) ->
@@ -95,15 +99,24 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { model.enqueue("extract") }, enabled = !state.busy && state.entries.isEmpty()) { Text("提取文字") }
-                        Button(onClick = { model.enqueue("translate") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("自动翻译") }
+                        Button(onClick = model::resumeExtraction,
+                            enabled = !state.busy && (state.entries.isEmpty() || state.activeOperation == "extract" && state.stage in setOf("任务已暂停", "任务中断，可重新处理", "任务失败"))) {
+                            Text(if (state.activeOperation == "extract") "继续提取" else "提取文字")
+                        }
+                        Button(onClick = { model.enqueue("translate") }, enabled = !state.busy && state.entries.isNotEmpty() &&
+                            !(state.activeOperation == "extract" && state.stage != "提取完成")) { Text("自动翻译") }
                     }
                 }
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { importTable.launch(arrayOf("application/json", "text/plain")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导入翻译表") }
                         OutlinedButton(onClick = { exportTable.launch("Minecraft翻译表.json") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导出翻译表") }
-                        Button(onClick = { exportWorld.launch("Minecraft地图-简体中文.mcworld") }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("验证并导出地图") }
+                        Button(onClick = {
+                            val base = state.sourceName.substringBeforeLast('.').ifBlank { "Minecraft地图" }
+                                .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").take(100)
+                            exportWorld.launch("$base-简体中文.mcworld")
+                        }, enabled = !state.busy && state.entries.isNotEmpty() &&
+                            !(state.activeOperation == "extract" && state.stage != "提取完成")) { Text("验证并导出地图") }
                     }
                     Text("待处理、失败和选择保留的项目会原样导出；不会标记为翻译成功。", style = MaterialTheme.typography.bodySmall)
                 }
