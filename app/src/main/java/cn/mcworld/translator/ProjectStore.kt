@@ -30,17 +30,24 @@ data class TextEntry(
 data class ProjectState(val id: String, var world: String = "", var language: String = "en",
     var stage: String = "等待导入", var progress: String = "", var busy: Boolean = false,
     val entries: MutableList<TextEntry> = mutableListOf(), val issues: MutableList<String> = mutableListOf(),
-    var export: String = "") {
+    var export: String = "", var sourceName: String = "", var progressCurrent: Long = 0,
+    var progressTotal: Long = 0, val extractedRecords: MutableMap<Int, Long> = mutableMapOf(),
+    var activeOperation: String = "") {
     fun json() = JSONObject().put("id", id).put("world", world).put("language", language)
         .put("stage", stage).put("progress", progress).put("busy", busy).put("export", export)
         .put("entries", JSONArray(entries.map { it.json() })).put("issues", JSONArray(issues))
+        .put("sourceName", sourceName).put("progressCurrent", progressCurrent).put("progressTotal", progressTotal)
+        .put("extractedRecords", JSONObject(extractedRecords.mapKeys { it.key.toString() })).put("activeOperation", activeOperation)
     companion object {
         fun from(j: JSONObject): ProjectState {
             val entries = j.getJSONArray("entries"); val issues = j.getJSONArray("issues")
             return ProjectState(j.getString("id"), j.getString("world"), j.getString("language"), j.getString("stage"),
                 j.getString("progress"), j.getBoolean("busy"),
                 (0 until entries.length()).map { TextEntry.from(entries.getJSONObject(it)) }.toMutableList(),
-                (0 until issues.length()).map { issues.getString(it) }.toMutableList(), j.getString("export"))
+                (0 until issues.length()).map { issues.getString(it) }.toMutableList(), j.getString("export"),
+                j.optString("sourceName", ""), j.optLong("progressCurrent", 0), j.optLong("progressTotal", 0),
+                j.optJSONObject("extractedRecords")?.let { completed -> completed.keys().asSequence().associate { it.toInt() to completed.getLong(it) }.toMutableMap() } ?: mutableMapOf(),
+                j.optString("activeOperation", ""))
         }
     }
 }
@@ -50,6 +57,18 @@ class ProjectStore(context: Context, val id: String) {
     val directory = File(context.filesDir, "projects/$id").apply { mkdirs() }
     private val stateFile = File(directory, "project.json")
     fun stateVersion(): Long = stateFile.lastModified()
+    private val progressFile = File(directory, "progress.json")
+    fun progressVersion(): Long = progressFile.lastModified()
+    fun readProgress(): Triple<String, Long, Long>? = runCatching {
+        val value = JSONObject(progressFile.readText())
+        Triple(value.getString("text"), value.getLong("current"), value.getLong("total"))
+    }.getOrNull()
+    fun writeProgress(text: String, current: Long, total: Long) {
+        val temporary = File(directory, "progress.json.tmp")
+        temporary.writeText(JSONObject().put("text", text).put("current", current).put("total", total).toString())
+        require(temporary.renameTo(progressFile)) { "无法保存提取进度" }
+    }
+    fun clearProgress() { progressFile.delete() }
     fun read(): ProjectState = synchronized(lock) {
         if (!stateFile.exists()) ProjectState(id) else ProjectState.from(JSONObject(stateFile.readText()))
     }
