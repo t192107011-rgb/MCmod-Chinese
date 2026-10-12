@@ -97,8 +97,20 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
             state.entries.add(entry)
         }
         var records = 0
-        forRecords(File(state.world)) { key, raw ->
-            records++
+        var lastReported = 0
+        var lastSaved = System.currentTimeMillis()
+        val database = NativeBridge.openDb(File(state.world, "db").absolutePath)
+        try {
+          val cursor = NativeBridge.cursor(database)
+          try {
+            while (true) {
+            currentCoroutineContext().ensureActive()
+            val item = NativeBridge.nextTextCandidate(cursor) ?: break
+            val scanned = requireNotNull(item[2])
+            records += (scanned[0].toInt() and 255) or ((scanned[1].toInt() and 255) shl 8)
+            val key = item[0]
+            val raw = item[1]
+            if (key != null) {
             val actor = key.take(11).toByteArray().contentEquals("actorprefix".toByteArray())
             val player = key.contentEquals("~local_player".toByteArray()) || key.toString(Charsets.ISO_8859_1).startsWith("player_server_")
             val chunk = key.size in listOf(9, 13) && (key.last().toInt() and 255) in listOf(0x31, 0x32)
@@ -152,8 +164,18 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                     state.issues += "db/$keyHex：${failure.message}，未修改"
                 }
             }
-            if (records % 500 == 0) { state.progress = "已检查 $records 条数据库记录"; store.save(state) }
-        }
+            }
+            if (records - lastReported >= 500) {
+                state.progress = "已检查 $records 条数据库记录，提取 ${state.entries.size} 项文字"
+                lastReported = records
+            }
+            val now = System.currentTimeMillis()
+            if (now - lastSaved >= 15000) { store.save(state); lastSaved = now }
+            }
+          } finally { NativeBridge.closeCursor(cursor) }
+        } finally { NativeBridge.closeDb(database) }
+        state.progress = "数据库检查完成（$records 条），正在检查资源文件"
+        store.save(state)
         val world = File(state.world)
         for (file in world.walkTopDown()) {
             currentCoroutineContext().ensureActive()
