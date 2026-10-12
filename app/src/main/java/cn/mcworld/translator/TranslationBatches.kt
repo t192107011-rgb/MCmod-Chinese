@@ -133,7 +133,7 @@ object TranslationBatches {
                             for ((name, data) in parts) if (name.endsWith(".json", true)) documents += decode(data)
                             else errors += "忽略 $name"
                         }
-                    } else documents += decode(read(source))
+                    } else documents += decode(read(source, MAX_TOTAL.toInt()))
                 } catch (failure: Exception) { errors += "$filename：${failure.message}" }
             }
         }
