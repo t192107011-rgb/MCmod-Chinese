@@ -92,10 +92,10 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
             if (state.world.isNotEmpty()) {
                 item {
                     if (state.sourceName.isNotBlank()) Text("地图：${state.sourceName}")
-                    Text("原文语言", style = MaterialTheme.typography.titleSmall)
+                    Text("原文语言（可多选）", style = MaterialTheme.typography.titleSmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("en" to "英语", "ru" to "俄语", "de" to "德语", "fr" to "法语", "es" to "西班牙语").forEach { (value, label) ->
-                            FilterChip(selected = state.language == value, onClick = { model.language(value) }, enabled = !state.busy, label = { Text(label) })
+                            FilterChip(selected = value in state.sourceLanguages.ifEmpty { setOf(state.language) }, onClick = { model.language(value) }, enabled = !state.busy && (state.entries.isEmpty() || state.activeOperation == "extract"), label = { Text(label) })
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
