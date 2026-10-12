@@ -32,7 +32,7 @@ object LittleEndianNbt {
         }
     }
 
-    fun parse(bytes: ByteArray, maxDepth: Int = 64, maxNodes: Int = 1_000_000): Record {
+    fun parse(bytes: ByteArray, maxDepth: Int = 64, maxNodes: Int = 1_000_000, copyBytes: Boolean = true): Record {
         require(bytes.size <= 32 * 1024 * 1024) { "NBT record too large" }
         val parser = Parser(bytes, maxDepth, maxNodes)
         var root = 0
@@ -42,7 +42,7 @@ object LittleEndianNbt {
             parser.payload(10, listOf(root++.toString()), 0)
         }
         require(root > 0) { "Empty NBT record" }
-        return Record(bytes.copyOf(), parser.texts.toList(), parser.types.toMap())
+        return Record(if (copyBytes) bytes.copyOf() else bytes, parser.texts.toList(), parser.types.toMap())
     }
 
     private fun encode(value: String): ByteArray {
