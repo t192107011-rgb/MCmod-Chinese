@@ -74,7 +74,15 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
                         for ((index, entry) in entries.withIndex()) {
                             currentCoroutineContext().ensureActive()
                             try {
-                                val translated = engine.translate(entry.original, state.language)
+                                val resourceLanguage = when (entry.file.substringAfterLast('/').substringBeforeLast('.')) {
+                                    "en_US", "en_GB" -> "en"
+                                    "ru_RU" -> "ru"
+                                    "de_DE" -> "de"
+                                    "fr_FR" -> "fr"
+                                    "es_ES" -> "es"
+                                    else -> state.language
+                                }
+                                val translated = engine.translate(entry.original, resourceLanguage)
                                 if (translated == entry.original) {
                                     entry.translation = ""; entry.status = "保留原文"; entry.reason = "没有可翻译的自然语言"
                                 } else {
