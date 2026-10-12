@@ -17,6 +17,7 @@ struct Cursor {
   std::shared_ptr<Database> owner;
   const leveldb::Snapshot* snapshot = nullptr;
   std::unique_ptr<leveldb::Iterator> iterator;
+  int endByteExclusive = 256;
   ~Cursor() { iterator.reset(); if (snapshot && owner) owner->db->ReleaseSnapshot(snapshot); }
 };
 std::unordered_map<jlong, std::shared_ptr<Database>> databases;
@@ -119,11 +120,38 @@ extern "C" JNIEXPORT jlong JNICALL Java_cn_mcworld_translator_engine_NativeBridg
     auto handle = next_id++; cursors[handle] = std::move(cursor); return handle;
   } catch (const std::exception& e) { failure(env, e); return 0; }
 }
+extern "C" JNIEXPORT jlong JNICALL Java_cn_mcworld_translator_engine_NativeBridge_cursorRange(JNIEnv* env, jobject, jlong id, jint start, jint end) {
+  std::lock_guard<std::mutex> guard(lock);
+  try {
+    if (start < 0 || end > 256 || start >= end) throw std::runtime_error("Invalid database key range");
+    auto cursor = std::make_unique<Cursor>(); cursor->owner = lookup(databases, id);
+    cursor->snapshot = cursor->owner->db->GetSnapshot();
+    leveldb::ReadOptions options; options.verify_checksums = true; options.snapshot = cursor->snapshot;
+    cursor->iterator.reset(cursor->owner->db->NewIterator(options));
+    char first = static_cast<char>(start);
+    if (start == 0) cursor->iterator->SeekToFirst();
+    else cursor->iterator->Seek(leveldb::Slice(&first, 1));
+    cursor->endByteExclusive = end;
+    auto handle = next_id++; cursors[handle] = std::move(cursor); return handle;
+  } catch (const std::exception& e) { failure(env, e); return 0; }
+}
+extern "C" JNIEXPORT jlong JNICALL Java_cn_mcworld_translator_engine_NativeBridge_countRecords(JNIEnv* env, jobject, jlong id) {
+  std::lock_guard<std::mutex> guard(lock);
+  try {
+    auto& db = lookup(databases, id);
+    leveldb::ReadOptions options; options.verify_checksums = true;
+    std::unique_ptr<leveldb::Iterator> iterator(db->db->NewIterator(options));
+    jlong count = 0;
+    for (iterator->SeekToFirst(); iterator->Valid(); iterator->Next()) ++count;
+    status(iterator->status()); return count;
+  } catch (const std::exception& e) { failure(env, e); return -1; }
+}
 extern "C" JNIEXPORT jobjectArray JNICALL Java_cn_mcworld_translator_engine_NativeBridge_next(JNIEnv* env, jobject, jlong id) {
   std::lock_guard<std::mutex> guard(lock);
   try {
     auto& cursor = lookup(cursors, id);
     if (!cursor->iterator->Valid()) { status(cursor->iterator->status()); return nullptr; }
+    if (!cursor->iterator->key().empty() && static_cast<unsigned char>(cursor->iterator->key().data()[0]) >= cursor->endByteExclusive) return nullptr;
     auto out = env->NewObjectArray(2, env->FindClass("[B"), nullptr);
     auto key = java_bytes(env, cursor->iterator->key()); env->SetObjectArrayElement(out, 0, key); env->DeleteLocalRef(key);
     if (cursor->iterator->value().size() <= 32 * 1024 * 1024) {
@@ -136,10 +164,13 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_cn_mcworld_translator_engine_Nati
   std::lock_guard<std::mutex> guard(lock);
   try {
     auto& cursor = lookup(cursors, id);
-    if (!cursor->iterator->Valid()) { status(cursor->iterator->status()); return nullptr; }
+    if (!cursor->iterator->Valid() || (!cursor->iterator->key().empty() && static_cast<unsigned char>(cursor->iterator->key().data()[0]) >= cursor->endByteExclusive)) {
+      status(cursor->iterator->status()); return nullptr;
+    }
     unsigned scanned = 0;
     auto out = env->NewObjectArray(3, env->FindClass("[B"), nullptr);
-    while (scanned < 500 && cursor->iterator->Valid()) {
+    while (scanned < 500 && cursor->iterator->Valid() &&
+           (cursor->iterator->key().empty() || static_cast<unsigned char>(cursor->iterator->key().data()[0]) < cursor->endByteExclusive)) {
       auto key = cursor->iterator->key();
       ++scanned;
       bool actor = key.starts_with("actorprefix");
