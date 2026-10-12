@@ -32,12 +32,13 @@ data class ProjectState(val id: String, var world: String = "", var language: St
     val entries: MutableList<TextEntry> = mutableListOf(), val issues: MutableList<String> = mutableListOf(),
     var export: String = "", var sourceName: String = "", var progressCurrent: Long = 0,
     var progressTotal: Long = 0, val extractedRecords: MutableMap<Int, Long> = mutableMapOf(),
-    var activeOperation: String = "") {
+    var activeOperation: String = "", val resourceDone: MutableSet<String> = mutableSetOf()) {
     fun json() = JSONObject().put("id", id).put("world", world).put("language", language)
         .put("stage", stage).put("progress", progress).put("busy", busy).put("export", export)
         .put("entries", JSONArray(entries.map { it.json() })).put("issues", JSONArray(issues))
         .put("sourceName", sourceName).put("progressCurrent", progressCurrent).put("progressTotal", progressTotal)
         .put("extractedRecords", JSONObject(extractedRecords.mapKeys { it.key.toString() })).put("activeOperation", activeOperation)
+        .put("resourceDone", JSONArray(resourceDone.toList()))
     companion object {
         fun from(j: JSONObject): ProjectState {
             val entries = j.getJSONArray("entries"); val issues = j.getJSONArray("issues")
@@ -47,7 +48,8 @@ data class ProjectState(val id: String, var world: String = "", var language: St
                 (0 until issues.length()).map { issues.getString(it) }.toMutableList(), j.getString("export"),
                 j.optString("sourceName", ""), j.optLong("progressCurrent", 0), j.optLong("progressTotal", 0),
                 j.optJSONObject("extractedRecords")?.let { completed -> completed.keys().asSequence().associate { it.toInt() to completed.getLong(it) }.toMutableMap() } ?: mutableMapOf(),
-                j.optString("activeOperation", ""))
+                j.optString("activeOperation", ""),
+                j.optJSONArray("resourceDone")?.let { done -> (0 until done.length()).map { done.getString(it) }.toMutableSet() } ?: mutableSetOf())
         }
     }
 }
