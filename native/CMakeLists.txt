@@ -23,7 +23,7 @@ file(GLOB ZSTD_SOURCES CONFIGURE_DEPENDS
 add_library(libzstd_static STATIC ${ZSTD_SOURCES})
 target_include_directories(libzstd_static PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/vendor/zstd/lib")
-target_compile_definitions(libzstd_static PRIVATE ZSTD_LEGACY_SUPPORT=0)
+target_compile_definitions(libzstd_static PRIVATE ZSTD_LEGACY_SUPPORT=0 ZSTD_DISABLE_ASM)
 add_subdirectory(vendor/leveldb EXCLUDE_FROM_ALL)
 # The vendored LevelDB enables Zstd, but its target does not export zstd's
 # public header directory to its own compilation units on a clean CI build.
