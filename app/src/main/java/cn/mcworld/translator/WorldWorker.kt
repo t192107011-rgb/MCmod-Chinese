@@ -95,14 +95,21 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
                     if (uri != null) SafWorkingCopy(applicationContext).exportToNewDocument(archive, Uri.parse(uri))
                 }
             }
-            state.busy = false; store.save(state)
+            state.busy = false; state.activeOperation = ""; store.save(state)
             Result.success()
         } catch (cancelled: CancellationException) {
             if (operation == "import") temporaryImports.forEach { it.deleteRecursively() }
-            state.busy = false; state.stage = "任务已取消"; state.progress = "原地图未修改，已完成的译文可继续审阅"
+            state.busy = false
+            state.stage = if (operation in setOf("translate", "extract")) "任务已暂停" else "任务已取消"
+            state.progress = if (operation == "extract") {
+                store.clearProgress()
+                state.progressCurrent = state.extractedRecords.values.sum()
+                "已完成 ${state.extractedRecords.size} / 4 个数据库区间；可继续提取"
+            } else "原地图未修改，已完成的译文可继续审阅"
             store.save(state); throw cancelled
         } catch (failure: Exception) {
             if (operation == "import") temporaryImports.forEach { it.deleteRecursively() }
+            if (operation == "extract") { store.clearProgress(); state.progressCurrent = state.extractedRecords.values.sum() }
             state.busy = false; state.stage = "任务失败"; state.progress = failure.message ?: "处理失败"
             store.save(state); Result.failure()
         }
