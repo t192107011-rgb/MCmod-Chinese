@@ -21,6 +21,32 @@ import java.nio.charset.CodingErrorAction
 import java.nio.file.Files
 
 class WorldOperations(private val context: Context, private val store: ProjectStore) {
+    /** NPC Actions is a JSON string inside NBT. Only button labels are editable. */
+    private fun npcButtons(source: String): List<DisplayCommand.JsonString> =
+        DisplayCommand.jsonStrings(source).filter { span ->
+            span.path.size == 2 && span.path[0].toIntOrNull() != null && span.path[1] == "button_name"
+        }
+
+    private fun rewriteNpcButtons(source: String, changes: Map<Int, String>): String {
+        val buttons = npcButtons(source)
+        require(changes.keys.all { it in buttons.indices }) { "NPC button index changed" }
+        val result = StringBuilder(source)
+        for ((index, button) in buttons.withIndex().toList().asReversed()) {
+            val translated = changes[index] ?: continue
+            require(ProtectedText.protect(translated).mapping.map { it.second } ==
+                ProtectedText.protect(button.text).mapping.map { it.second }) { "NPC button protected text changed" }
+            result.replace(button.start, button.end, JsonPrimitive(translated).toString())
+        }
+        val rewritten = result.toString()
+        val oldStrings = DisplayCommand.jsonStrings(source)
+        val newStrings = DisplayCommand.jsonStrings(rewritten)
+        require(oldStrings.map { it.path } == newStrings.map { it.path }) { "NPC action structure changed" }
+        val editable = buttons.map { it.path }.toSet()
+        require(oldStrings.zip(newStrings).all { (old, new) -> old.path in editable || old.text == new.text }) {
+            "NPC action command changed"
+        }
+        return rewritten
+    }
     suspend fun table(state: ProjectState, uri: Uri, importing: Boolean) {
         val resolver = context.contentResolver
         if (importing) {
@@ -212,13 +238,25 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                     for (text in record.texts) {
                         val path = text.path
                         val root = path.first()
-                        val id = fields[listOf(root, "id")]?.value?.substringAfter(':')
+                        val id = (fields[listOf(root, "id")] ?: fields[listOf(root, "identifier")])?.value?.substringAfter(':')
                         if (id in listOf("Sign", "HangingSign")) {
                             if (path == listOf(root, "Text") || path == listOf(root, "FrontText", "Text") || path == listOf(root, "BackText", "Text")) add(text)
                         }
                         if (id == "CommandBlock" && path == listOf(root, "Command")) add(text, "command")
-                        if (id?.lowercase() == "npc" && path.last() in listOf("InterativeText", "Actions", "Dialog", "Dialogue")) {
-                            part.issues += "db/$keyHex/${path.joinToString("/")}：NPC 数据库对话版本尚未验证，保留原文；支持附带 dialogue JSON"
+                        if (id?.lowercase() == "npc" && path.size == 2) {
+                            when (path.last()) {
+                                "InterativeText", "Dialog", "Dialogue" -> add(text, "npc-dialogue")
+                                "Actions" -> try {
+                                    npcButtons(text.value).forEachIndexed { index, button ->
+                                        if (button.text.isNotBlank()) addEntry(TextEntry(
+                                            sha("$keyHex/${text.path}/npc-button/$index".toByteArray()),
+                                            "db/$keyHex/${path.joinToString("/")}/按钮[$index]", button.text,
+                                            recordKey = keyHex, path = path, mode = "npc-actions", span = index))
+                                    }
+                                } catch (failure: Exception) {
+                                    part.issues += "db/$keyHex/${path.joinToString("/")}：NPC 按钮格式无法确认（${failure.message}），保留原文"
+                                }
+                            }
                         }
                         val tag = path.indexOfLast { it == "tag" }
                         if (tag > 0) {
@@ -447,7 +485,11 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                     val replacements = linkedMapOf<List<String>, String>()
                     for ((path, group) in items.groupBy { it.path }) {
                         val text = record.texts.single { it.path == path }.value
-                        if (group.first().mode in setOf("command", "rawtext")) {
+                        if (group.first().mode == "npc-actions") {
+                            val buttons = npcButtons(text)
+                            group.forEach { require(buttons[it.span].text == it.original) }
+                            replacements[path] = rewriteNpcButtons(text, group.associate { it.span to it.translation })
+                        } else if (group.first().mode in setOf("command", "rawtext")) {
                             val rawtext = group.first().mode == "rawtext"
                             val plan = DisplayCommand.inspect(if (rawtext) "tellraw @a $text" else text)
                             group.forEach { require(plan.spans[it.span].text == it.original) }
