@@ -67,6 +67,12 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
                 "extract" -> WorldOperations(applicationContext, store).extract(state)
                 "table-import", "table-export" -> WorldOperations(applicationContext, store).table(state,
                     Uri.parse(requireNotNull(inputData.getString("tableUri"))), operation == "table-import")
+                "table-check" -> WorldOperations(applicationContext, store).checkTable(state)
+                "batch-export" -> WorldOperations(applicationContext, store).batchExport(state,
+                    Uri.parse(requireNotNull(inputData.getString("tableUri"))), inputData.getInt("batchSize", 500))
+                "batch-import" -> WorldOperations(applicationContext, store).batchImport(state,
+                    requireNotNull(inputData.getStringArray("tableUris")).map(Uri::parse),
+                    inputData.getString("resolution") ?: "preview")
                 "translate" -> {
                     val selected = inputData.getString("entry")
                     val entries = state.entries.filter { (selected == null || it.id == selected) && it.status !in setOf("保留原文", "手动修改") }
