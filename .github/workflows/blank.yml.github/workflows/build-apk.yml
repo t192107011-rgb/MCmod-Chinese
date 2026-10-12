@@ -1,0 +1,58 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Get source and models
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Check model files
+        run: |
+          git lfs pull
+          MODEL=app/src/main/assets/models/en-zh/onnx/encoder_model_quantized.onnx
+          test -f "$MODEL"
+          if head -c 80 "$MODEL" | grep -q 'version https://git-lfs.github.com/spec/v1'; then
+            echo "模型仍是 Git LFS 占位文件，无法构建完整 APK"
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install project SDK and NDK
+        run: |
+          sdkmanager --install \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.2.12479018" \
+            "cmake;3.22.1"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Save APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MinecraftWorldTranslator-debug
+          path: app/build/outputs/apk/debug/*.apk
