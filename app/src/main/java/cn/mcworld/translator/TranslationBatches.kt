@@ -40,9 +40,9 @@ object TranslationBatches {
         require((state.entries.size.toLong() + batchSize - 1) / batchSize < MAX_FILES) { "批次数量过多，请增大每批记录数" }
         val manifest = JSONObject().put("formatVersion", 2).put("projectId", state.id)
             .put("totalEntries", state.entries.size).put("batchSize", batchSize)
-            .put("targetLanguage", "zh-CN")
+            .put("targetLanguage", "zh-CN").put("edition", state.edition)
         val header = JSONObject().put("id", state.id).put("world", state.world)
-            .put("language", state.language).toString().dropLast(1) + ",\"entries\":["
+            .put("language", state.language).put("edition", state.edition).toString().dropLast(1) + ",\"entries\":["
         val prefix = header.toByteArray(Charsets.UTF_8)
         val suffix = "]}".toByteArray(Charsets.UTF_8)
         val batches = JSONArray()
@@ -186,6 +186,8 @@ object TranslationBatches {
         for ((batchIndex, document) in documents.withIndex()) {
             try {
                 if (document.has("id")) require(document.getString("id") == state.id) { "项目 ID 不匹配" }
+                if (document.optString("edition").isNotBlank() && state.edition.isNotBlank())
+                    require(document.getString("edition") == state.edition) { "地图版本不匹配" }
                 val rows = document.getJSONArray("entries")
                 require(rows.length() <= 100_000)
                 for (i in 0 until rows.length()) {

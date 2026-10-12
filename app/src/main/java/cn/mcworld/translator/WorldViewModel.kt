@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 import java.io.File
+import cn.mcworld.translator.core.SafeWorldArchive
 
 class WorldViewModel(application: Application) : AndroidViewModel(application) {
     private val preferences = application.getSharedPreferences("project", 0)
@@ -34,13 +35,23 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
             val initialStore = store
             val initialId = projectId
             val initial = initialStore.read()
+            if (initial.world.isNotEmpty() && initial.edition.isBlank()) {
+                runCatching { SafeWorldArchive().edition(File(initial.world)).name.lowercase() }.getOrNull()?.let {
+                    initial.edition = it
+                    initialStore.save(initial)
+                }
+            }
             if (initial.busy) {
                 val info = workManager.getWorkInfosForUniqueWork("world-$initialId").get()
                 if (info.none { !it.state.isFinished }) {
                     initial.busy = false
                     initial.stage = "任务中断，可重新处理"
                     if (initial.activeOperation == "extract") {
-                        initial.progressCurrent = initial.extractedRecords.values.sum()
+                        initial.progressCurrent = 0
+                        initial.progressTotal = 0
+                        initial.progress = if (initial.edition == "java")
+                            "已完成 ${initial.javaDone.size} 个 Java 区域文件；可继续提取"
+                        else "已完成 ${initial.extractedRecords.size} / 4 个数据库区间；可继续提取"
                         initialStore.clearProgress()
                     }
                     initialStore.save(initial)
@@ -83,11 +94,26 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
     fun enqueue(operation: String, vararg extra: Pair<String, Any>) {
         if (mutable.value.busy) return
         val data = workDataOf("project" to projectId, "operation" to operation, *extra)
-        val state = store.read(); state.busy = true; state.activeOperation = operation; store.save(state); mutable.value = state
+        val state = store.read()
+        state.busy = true
+        state.activeOperation = operation
+        state.stage = "任务排队中"
+        state.progress = if (operation == "extract" && (state.extractedRecords.isNotEmpty() || state.javaDone.isNotEmpty()))
+            "准备继续提取，已完成部分将保留" else "准备开始：${operationLabel(operation)}"
+        state.progressCurrent = 0
+        state.progressTotal = 0
+        store.clearProgress()
+        store.save(state); mutable.value = state
         workManager.enqueueUniqueWork("world-$projectId", ExistingWorkPolicy.KEEP,
             OneTimeWorkRequestBuilder<WorldWorker>().setInputData(data).build())
     }
     fun cancel() { pause() }
+    private fun operationLabel(operation: String) = when (operation) {
+        "import" -> "导入地图"; "extract" -> "提取文字"; "export" -> "验证并导出地图"
+        "table-import", "batch-import" -> "导入翻译表"
+        "table-export", "batch-export" -> "导出翻译表"
+        "table-check" -> "检查翻译表"; else -> "处理任务"
+    }
     val reuseEnabled = MutableStateFlow(preferences.getBoolean("reuse", true))
     val chineseEnabled = MutableStateFlow(preferences.getBoolean("chinese", true))
     fun setReuse(value: Boolean) { preferences.edit().putBoolean("reuse", value).apply(); reuseEnabled.value = value }
@@ -106,8 +132,11 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
                         state.stage = "任务已暂停"
                         if (state.activeOperation == "extract") {
                             currentStore.clearProgress()
-                            state.progressCurrent = state.extractedRecords.values.sum()
-                            state.progress = "已完成 ${state.extractedRecords.size} / 4 个数据库区间；可继续提取"
+                            state.progressCurrent = 0
+                            state.progressTotal = 0
+                            state.progress = if (state.edition == "java")
+                                "已完成 ${state.javaDone.size} 个 Java 区域文件；可继续提取"
+                            else "已完成 ${state.extractedRecords.size} / 4 个数据库区间；可继续提取"
                         }
                         currentStore.save(state)
                     }

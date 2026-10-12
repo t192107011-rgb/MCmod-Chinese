@@ -9,8 +9,11 @@ import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
+import java.util.zip.GZIPInputStream
+import java.io.ByteArrayOutputStream
 
 class SafeWorldArchive(private val limits: Limits = Limits()) {
+    enum class Edition { BEDROCK, JAVA }
     data class Limits(
         val bytes: Long = 2L * 1024 * 1024 * 1024,
         val files: Int = 20_000,
@@ -83,14 +86,36 @@ class SafeWorldArchive(private val limits: Limits = Limits()) {
             val children = current.listFiles() ?: error("Cannot list world folder")
             require(children.none { Files.isSymbolicLink(it.toPath()) }) { "Symbolic links are unsupported" }
             if (File(current, "level.dat").isFile) {
-                require(File(current, "db/CURRENT").isFile && File(current, "db").isDirectory) { "Not a Bedrock world; Java maps are unsupported" }
-                validateLevelDat(File(current, "level.dat"))
+                edition(current)
                 return current
             }
-            require(children.size == 1 && children[0].isDirectory) { "Cannot locate a unique Bedrock world root" }
+            require(children.size == 1 && children[0].isDirectory) { "Cannot locate a unique world root" }
             current = children[0]
         }
         error("World wrapper depth limit")
+    }
+
+    fun edition(world: File): Edition {
+        val level = File(world, "level.dat")
+        require(level.isFile) { "Missing level.dat" }
+        if (File(world, "db/CURRENT").isFile && File(world, "db").isDirectory) {
+            validateLevelDat(level)
+            return Edition.BEDROCK
+        }
+        require(File(world, "region").isDirectory) { "Not a recognized Java or Bedrock world" }
+        require(level.length() in 16..(32L * 1024 * 1024)) { "Invalid Java level.dat size" }
+        GZIPInputStream(level.inputStream()).use { input ->
+            val output = ByteArrayOutputStream()
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                require(output.size() + count <= 32 * 1024 * 1024) { "Java level.dat too large" }
+                output.write(buffer, 0, count)
+            }
+            BigEndianNbt.parse(output.toByteArray())
+        }
+        return Edition.JAVA
     }
 
     private fun validateLevelDat(file: File) {

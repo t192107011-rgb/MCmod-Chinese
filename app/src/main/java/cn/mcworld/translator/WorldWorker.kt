@@ -46,6 +46,16 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
                 "table-check" -> "检查翻译表中"
                 else -> error("不支持的任务")
             }
+            state.progress = when (operation) {
+                "import" -> "正在复制并验证地图文件"
+                "extract" -> "正在准备提取；已完成的部分会保留"
+                "export" -> "正在验证译文并制作地图文件"
+                "table-import", "batch-import" -> "正在读取和校验翻译表"
+                "table-export", "batch-export" -> "正在写入翻译表"
+                else -> "正在检查翻译表"
+            }
+            state.progressCurrent = 0
+            state.progressTotal = 0
             store.save(state)
             when (operation) {
                 "import" -> {
@@ -72,7 +82,8 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
                             state.world = SafeWorldArchive().extract(archive, container) { coroutine.ensureActive() }.absolutePath
                         } finally { archive.delete() }
                     }
-                    state.stage = "地图验证通过"; state.progress = "原地图保持不变，请选择原文语言并提取文字"
+                    state.edition = SafeWorldArchive().edition(File(state.world)).name.lowercase()
+                    state.stage = "地图验证通过"; state.progress = "${if (state.edition == "java") "Java版" else "基岩版"}地图；原地图保持不变，请选择原文语言并提取文字"
                 }
                 "extract" -> WorldOperations(applicationContext, store).extract(state)
                 "table-import", "table-export" -> WorldOperations(applicationContext, store).table(state,
@@ -97,13 +108,15 @@ class WorldWorker(context: Context, parameters: WorkerParameters) : CoroutineWor
             state.stage = if (operation == "extract") "任务已暂停" else "任务已取消"
             state.progress = if (operation == "extract") {
                 store.clearProgress()
-                state.progressCurrent = state.extractedRecords.values.sum()
-                "已完成 ${state.extractedRecords.size} / 4 个数据库区间；可继续提取"
+                state.progressCurrent = 0
+                state.progressTotal = 0
+                if (state.edition == "java") "已完成 ${state.javaDone.size} 个 Java 区域文件；可继续提取"
+                else "已完成 ${state.extractedRecords.size} / 4 个数据库区间；可继续提取"
             } else "原地图未修改，已完成的译文可继续审阅"
             store.save(state); throw cancelled
         } catch (failure: Exception) {
             if (operation == "import") temporaryImports.forEach { it.deleteRecursively() }
-            if (operation == "extract") { store.clearProgress(); state.progressCurrent = state.extractedRecords.values.sum() }
+            if (operation == "extract") { store.clearProgress(); state.progressCurrent = 0; state.progressTotal = 0 }
             state.busy = false; state.stage = "任务失败"; state.progress = failure.message ?: "处理失败"
             store.save(state); Result.failure()
         }

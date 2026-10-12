@@ -8,6 +8,8 @@ import cn.mcworld.translator.core.DisplayCommand
 import cn.mcworld.translator.core.LittleEndianNbt
 import cn.mcworld.translator.core.ProtectedText
 import cn.mcworld.translator.core.SafeWorldArchive
+import cn.mcworld.translator.core.BigEndianNbt
+import cn.mcworld.translator.core.JavaRegion
 import cn.mcworld.translator.engine.NativeBridge
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -21,6 +23,27 @@ import java.nio.charset.CodingErrorAction
 import java.nio.file.Files
 
 class WorldOperations(private val context: Context, private val store: ProjectStore) {
+    private fun javaComponentSpans(source: String): List<DisplayCommand.JsonString> =
+        DisplayCommand.jsonStrings(source).filter { it.path.lastOrNull() == "text" }
+
+    private fun rewriteJavaComponent(source: String, changes: Map<Int, String>): String {
+        val spans = javaComponentSpans(source)
+        require(changes.keys.all { it in spans.indices })
+        val result = StringBuilder(source)
+        for ((index, span) in spans.withIndex().toList().asReversed()) {
+            val translated = changes[index] ?: continue
+            require(ProtectedText.protect(translated).mapping.map { it.second } ==
+                ProtectedText.protect(span.text).mapping.map { it.second }) { "Java 文本格式代码发生变化" }
+            result.replace(span.start, span.end, JsonPrimitive(translated).toString())
+        }
+        val updated = result.toString()
+        val before = DisplayCommand.jsonStrings(source)
+        val after = DisplayCommand.jsonStrings(updated)
+        require(before.map { it.path } == after.map { it.path }) { "Java 文本结构发生变化" }
+        val editable = spans.map { it.path }.toSet()
+        require(before.zip(after).all { (old, new) -> old.path in editable || old.text == new.text }) { "Java 文本非显示字段发生变化" }
+        return updated
+    }
     /** NPC Actions is a JSON string inside NBT. Only button labels are editable. */
     private fun npcButtons(source: String): List<DisplayCommand.JsonString> =
         DisplayCommand.jsonStrings(source).filter { span ->
@@ -65,6 +88,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                 .put("activeOperation", state.activeOperation)
                 .put("resourceDone", org.json.JSONArray(state.resourceDone.toList()))
                 .put("sourceLanguages", org.json.JSONArray(state.sourceLanguages.toList()))
+                .put("edition", state.edition)
             try {
                 (resolver.openOutputStream(uri, "w") ?: error("翻译表不可写")).bufferedWriter(Charsets.UTF_8).use { writer ->
                     writer.write(metadata.toString().dropLast(1))
@@ -162,18 +186,101 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         } finally { NativeBridge.closeDb(db) }
     }
 
+    private suspend fun extractJavaRegions(state: ProjectState, world: File) {
+        val regions = world.walkTopDown().filter { it.isFile && it.extension.equals("mca", true) &&
+            (it.parentFile?.name == "region" || it.parentFile?.name == "entities") }
+            .sortedBy { it.relativeTo(world).invariantSeparatorsPath }.toList()
+        val indexed = regions.mapNotNull { file ->
+            runCatching { file to JavaRegion.indices(file) }.onFailure {
+                state.issues += "${file.relativeTo(world).invariantSeparatorsPath}：${it.message}，未修改"
+            }.getOrNull()
+        }
+        val total = indexed.sumOf { it.second.size }.toLong()
+        var scanned = indexed.filter { it.first.relativeTo(world).invariantSeparatorsPath in state.javaDone }
+            .sumOf { it.second.size }.toLong()
+        state.progressCurrent = scanned
+        state.progressTotal = total
+        store.writeProgress("Java 区域区块 $scanned / $total；已提取 ${state.entries.size} 项", scanned, total)
+        store.save(state)
+        var checkpoint = 0
+        for ((file, indices) in indexed) {
+            currentCoroutineContext().ensureActive()
+            val relative = file.relativeTo(world).invariantSeparatorsPath
+            if (relative in state.javaDone) continue
+            for (index in indices) {
+                currentCoroutineContext().ensureActive()
+                val before = state.entries.size
+                val key = "java:$relative#$index"
+                try {
+                    val bytes = requireNotNull(JavaRegion.read(file, index))
+                    val record = BigEndianNbt.parse(bytes, maxNodes = 100_000, copyBytes = false)
+                    val fields = record.texts.associateBy { it.path }
+                    for (text in record.texts) {
+                        val path = text.path
+                        val owner = (1 until path.size).asSequence().mapNotNull { depth ->
+                            fields[path.take(depth) + "id"]?.value?.substringAfter(':')?.lowercase()
+                        }.lastOrNull() ?: continue
+                        val sign = owner == "sign" || owner.endsWith("_sign")
+                        val commandBlock = owner in setOf("command_block", "chain_command_block", "repeating_command_block")
+                        val signField = path.last() in setOf("Text1", "Text2", "Text3", "Text4") ||
+                            path.size >= 3 && path[path.size - 2] == "messages" &&
+                            path[path.size - 3] in setOf("front_text", "back_text")
+                        if (sign && signField && text.value.isNotBlank()) {
+                            if (text.value.trimStart().startsWith('{')) {
+                                javaComponentSpans(text.value).forEachIndexed { span, component ->
+                                    if (component.text.isNotBlank()) state.entries += TextEntry(
+                                        sha("$key/${path}/$span".toByteArray()), "$key/${path.joinToString("/")}/文字[$span]",
+                                        component.text, recordKey = key, path = path, mode = "java-component", span = span)
+                                }
+                            } else state.entries += TextEntry(sha("$key/$path".toByteArray()),
+                                "$key/${path.joinToString("/")}", text.value, recordKey = key, path = path, mode = "java-text")
+                        }
+                        if (commandBlock && path.last() == "Command" && text.value.isNotBlank()) {
+                            val plan = DisplayCommand.inspect(text.value)
+                            state.issues += plan.issues.map { "$key/${path.joinToString("/")}：$it，命令保留原文" }
+                            plan.spans.forEachIndexed { span, segment -> state.entries += TextEntry(
+                                sha("$key/${path}/command/$span".toByteArray()),
+                                "$key/${path.joinToString("/")}/显示文本[$span]", segment.text,
+                                recordKey = key, path = path, mode = "command", span = span) }
+                        }
+                    }
+                    require(state.entries.size <= 100_000) { "可审阅文本超过 100,000 项" }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                catch (failure: Exception) {
+                    state.entries.subList(before, state.entries.size).clear()
+                    state.issues += "$key：${failure.message}，未修改"
+                }
+                scanned++
+                if (scanned % 32L == 0L) store.writeProgress(
+                    "Java 区域区块 $scanned / $total；已提取 ${state.entries.size} 项", scanned, total)
+            }
+            state.javaDone += relative
+            state.progressCurrent = scanned
+            state.progress = "Java 区域区块 $scanned / $total；已提取 ${state.entries.size} 项"
+            if (++checkpoint % 8 == 0) store.save(state)
+            store.writeProgress(state.progress, scanned, total)
+        }
+        store.save(state)
+    }
+
     suspend fun extract(state: ProjectState) {
         require(state.world.isNotEmpty())
+        if (state.edition.isBlank()) state.edition = SafeWorldArchive().edition(File(state.world)).name.lowercase()
         // Completed key ranges are durable checkpoints; unfinished ranges are rescanned.
-        if (state.extractedRecords.isEmpty()) {
+        if (state.extractedRecords.isEmpty() && state.javaDone.isEmpty() && state.resourceDone.isEmpty()) {
             state.entries.clear()
             state.issues.clear()
         } else {
             state.entries.removeAll { it.file.isNotEmpty() && it.file !in state.resourceDone }
-            state.issues.removeAll { issue -> !issue.startsWith("db/") && state.resourceDone.none { file ->
+            state.issues.removeAll { issue -> !issue.startsWith("db/") && !issue.startsWith("java:") && state.resourceDone.none { file ->
                 issue.startsWith("$file:") || issue.startsWith("$file/") || issue.startsWith("$file：")
             } }
         }
+        if (state.edition == "java") {
+            extractJavaRegions(state, File(state.world))
+            state.progress = "Java 区块检查完成，正在检查资源文件"
+            store.writeProgress(state.progress, state.progressCurrent, state.progressTotal)
+        } else {
         val originals = File(store.directory, "records").apply { mkdirs() }
         fun addEntry(entry: TextEntry) {
             require(state.entries.size < 100_000) { "可审阅文本超过 100,000 项" }
@@ -307,6 +414,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         store.writeProgress(state.progress, total, total)
         store.save(state)
         } finally { NativeBridge.closeDb(totalDb) }
+        }
         val world = File(state.world)
         val languageLocales = mapOf("en" to "en_US", "ru" to "ru_RU", "de" to "de_DE",
             "fr" to "fr_FR", "es" to "es_ES")
@@ -319,7 +427,11 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
             if (relative.startsWith("db/")) return false
             val localized = file.extension.equals("lang", ignoreCase = true) && relative.contains("/texts/") &&
                 file.nameWithoutExtension.matches(Regex("[a-z]{2,3}_[A-Z]{2}"))
-            return !localized || file.nameWithoutExtension in locales
+            val javaLang = state.edition == "java" && (relative.startsWith("assets/") || relative.contains("/assets/")) &&
+                relative.contains("/lang/") && file.extension.equals("json", true) &&
+                file.nameWithoutExtension.matches(Regex("[a-z]{2,3}_[a-z]{2}"))
+            return (!localized || file.nameWithoutExtension in locales) &&
+                (!javaLang || file.nameWithoutExtension in locales.map(String::lowercase))
         }
         val files = world.walkTopDown()
             .filter(::wanted)
@@ -354,7 +466,8 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                 fun add(start: Int, end: Int, text: String, json: Boolean, label: String) {
                     if (text.isBlank()) return
                     addEntry(TextEntry(sha("$relative/$start/$end".toByteArray()), "$relative/$label", text,
-                        status = if (relative.endsWith("/zh_CN.lang", ignoreCase = true)) "保留原文" else "待处理",
+                        status = if (relative.endsWith("/zh_CN.lang", ignoreCase = true) ||
+                            state.edition == "java" && relative.endsWith("/zh_cn.json", ignoreCase = true)) "保留原文" else "待处理",
                         file = relative, start = start, end = end, mode = if (json) "file-json" else "file-text"))
                 }
                 if (file.extension.lowercase() in setOf("lang", "mcfunction")) {
@@ -378,10 +491,17 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                     }
                 } else {
                     val strings = DisplayCommand.jsonStrings(source)
+                    val javaLang = state.edition == "java" && (relative.startsWith("assets/") || relative.contains("/assets/")) &&
+                        relative.contains("/lang/") && file.nameWithoutExtension.matches(Regex("[a-z]{2,3}_[a-z]{2}"))
                     val translatePaths = strings.asSequence().filter { it.path.lastOrNull() == "translate" }.map { it.path }.toHashSet()
                     var known = false
                     for (text in strings) {
                         val path = text.path
+                        if (javaLang && path.size == 1) {
+                            add(text.start, text.end, text.text, true, "语言键 ${path.single()}")
+                            known = true
+                            continue
+                        }
                         val dialogue = path.firstOrNull() == "minecraft:npc_dialogue" && path.getOrNull(1) == "scenes"
                         val plainDialogue = dialogue && (path.size == 4 && path.last() in setOf("text", "npc_name") || path.size == 6 && path[3] == "buttons" && path.last() == "name")
                         val rawText = path.lastOrNull() == "text" && path.size >= 3 && path[path.size - 3] == "rawtext"
@@ -466,16 +586,81 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         }
     }
 
+    private suspend fun databaseDigest(world: File, overrides: Map<String, String> = emptyMap()): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val found = HashSet<String>()
+        forRecords(world) { key, value ->
+            val id = hex(key)
+            val hash = overrides[id]?.also { found += id } ?: sha(requireNotNull(value))
+            digest.update(java.nio.ByteBuffer.allocate(4).putInt(key.size).array())
+            digest.update(key)
+            digest.update(unhex(hash))
+        }
+        require(found == overrides.keys) { "数据库记录缺失" }
+        return hex(digest.digest())
+    }
+
+    private suspend fun filesDigest(world: File, skipDatabase: Boolean): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val files = world.walkTopDown().filter { it.isFile &&
+            (!skipDatabase || !it.relativeTo(world).invariantSeparatorsPath.startsWith("db/")) }
+            .map { it.relativeTo(world).invariantSeparatorsPath }.sorted().toList()
+        for (relative in files) {
+            currentCoroutineContext().ensureActive()
+            val path = relative.toByteArray(Charsets.UTF_8)
+            digest.update(java.nio.ByteBuffer.allocate(4).putInt(path.size).array())
+            digest.update(path)
+            digest.update(unhex(shaFile(File(world, relative))))
+        }
+        return hex(digest.digest())
+    }
+
     suspend fun export(state: ProjectState): File {
         state.entries.forEach { validate(it) }
+        val edition = SafeWorldArchive().edition(File(state.world))
         val target = File(store.directory, "export-work-${System.nanoTime()}")
         val exportedFolder = File(context.cacheDir, "world-exports").apply { mkdirs() }
-        val output = File(exportedFolder, "MinecraftWorldTranslator-${state.id}-${System.nanoTime()}.mcworld")
+        val output = File(exportedFolder, "MinecraftWorldTranslator-${state.id}-${System.nanoTime()}.${if (edition == SafeWorldArchive.Edition.JAVA) "zip" else "mcworld"}")
         val restored = File(store.directory, "export-check-${System.nanoTime()}")
         try {
             copyWorld(File(state.world), target)
             val changes = state.entries.filter { it.status in setOf("自动翻译", "手动修改") && it.translation != it.original }
-            val expected = linkedMapOf<String, ByteArray>()
+            val expected = linkedMapOf<String, String>()
+            if (edition == SafeWorldArchive.Edition.JAVA) {
+                for ((key, items) in changes.filter { it.recordKey.startsWith("java:") }.groupBy { it.recordKey }) {
+                    currentCoroutineContext().ensureActive()
+                    val relative = key.removePrefix("java:").substringBeforeLast('#')
+                    val index = key.substringAfterLast('#').toInt()
+                    require(!relative.startsWith('/') && relative.split('/').none { it in setOf("", ".", "..") })
+                    val originalFile = File(state.world, relative)
+                    val destination = File(target, relative)
+                    require(originalFile.canonicalPath.startsWith(File(state.world).canonicalPath + File.separator))
+                    val original = requireNotNull(JavaRegion.read(originalFile, index))
+                    val record = BigEndianNbt.parse(original)
+                    val replacements = linkedMapOf<List<String>, String>()
+                    for ((path, group) in items.groupBy { it.path }) {
+                        val text = record.texts.single { it.path == path }.value
+                        replacements[path] = when (group.first().mode) {
+                            "java-component" -> {
+                                val spans = javaComponentSpans(text)
+                                group.forEach { require(spans[it.span].text == it.original) }
+                                rewriteJavaComponent(text, group.associate { it.span to it.translation })
+                            }
+                            "command" -> {
+                                val plan = DisplayCommand.inspect(text)
+                                group.forEach { require(plan.spans[it.span].text == it.original) }
+                                plan.rewrite(group.associate { it.span to it.translation })
+                            }
+                            else -> {
+                                require(group.size == 1 && text == group.single().original)
+                                group.single().translation
+                            }
+                        }
+                    }
+                    val rewritten = record.rewrite(replacements)
+                    JavaRegion.rewrite(destination, index, original, rewritten)
+                }
+            } else {
             val db = NativeBridge.openDb(File(target, "db").absolutePath)
             try {
                 for ((key, items) in changes.filter { it.recordKey.isNotEmpty() }.groupBy { it.recordKey }) {
@@ -502,16 +687,11 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                     }
                     val rewritten = record.rewrite(replacements)
                     NativeBridge.write(db, arrayOf(unhex(key)), arrayOf(original), arrayOf(rewritten))
-                    expected[key] = rewritten
+                    expected[key] = sha(rewritten)
                 }
             } finally { NativeBridge.closeDb(db) }
-            // Verify every record against the unchanged working world, not only changed keys.
-            val baseline = linkedMapOf<String, String>()
-            forRecords(File(state.world)) { key, value -> if (value != null) baseline[hex(key)] = sha(value) else error("无法完整验证超大数据库记录，拒绝导出") }
-            expected.forEach { (key, value) -> baseline[key] = sha(value) }
-            val reread = linkedMapOf<String, String>()
-            forRecords(target) { key, value -> reread[hex(key)] = sha(requireNotNull(value)) }
-            require(baseline == reread) { "写回数据库后完整性校验失败" }
+            require(databaseDigest(File(state.world), expected) == databaseDigest(target)) { "写回数据库后完整性校验失败" }
+            }
             for ((relative, items) in changes.filter { it.file.isNotEmpty() }.groupBy { it.file }) {
                 currentCoroutineContext().ensureActive()
                 val file = File(target, relative)
@@ -541,16 +721,17 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
             val coroutine = currentCoroutineContext()
             SafeWorldArchive().export(target, output) { coroutine.ensureActive() }
             val root = SafeWorldArchive().extract(output, restored) { coroutine.ensureActive() }
-            val exportedRecords = linkedMapOf<String, String>()
-            forRecords(root) { key, value -> exportedRecords[hex(key)] = sha(requireNotNull(value)) }
-            require(exportedRecords == baseline) { "导出后数据库重新读取失败" }
-            val expectedFiles = target.walkTopDown().filter { it.isFile && !it.relativeTo(target).invariantSeparatorsPath.startsWith("db/") }.associate { it.relativeTo(target).invariantSeparatorsPath to shaFile(it) }
-            val actualFiles = root.walkTopDown().filter { it.isFile && !it.relativeTo(root).invariantSeparatorsPath.startsWith("db/") }.associate { it.relativeTo(root).invariantSeparatorsPath to shaFile(it) }
-            require(expectedFiles == actualFiles) { "导出文件校验失败" }
+            if (edition == SafeWorldArchive.Edition.BEDROCK)
+                require(databaseDigest(File(state.world), expected) == databaseDigest(root)) { "导出后数据库重新读取失败" }
+            require(filesDigest(target, edition == SafeWorldArchive.Edition.BEDROCK) ==
+                filesDigest(root, edition == SafeWorldArchive.Edition.BEDROCK)) { "导出文件校验失败" }
             state.export = output.absolutePath
             state.stage = "导出验证通过"
-            state.progress = "数据库重新读取通过；待处理和失败项目保留原文"
-            File(store.directory, "report.json").writeText(state.json().toString(2))
+            state.progress = "${if (edition == SafeWorldArchive.Edition.JAVA) "Java 区域文件" else "基岩版数据库"}与导出文件校验通过；待处理和失败项目保留原文"
+            File(store.directory, "report.json").writeText(JSONObject()
+                .put("edition", edition.name.lowercase()).put("totalEntries", state.entries.size)
+                .put("translated", state.entries.count { it.status in setOf("自动翻译", "手动修改") })
+                .put("issues", org.json.JSONArray(state.issues)).toString(2))
             return output
         } catch (failure: Throwable) { output.delete(); throw failure }
         finally { target.deleteRecursively(); restored.deleteRecursively() }

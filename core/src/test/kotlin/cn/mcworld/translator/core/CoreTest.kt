@@ -7,10 +7,52 @@ import java.util.concurrent.CancellationException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import java.util.zip.CRC32
+import java.util.zip.GZIPOutputStream
+import java.util.zip.DeflaterOutputStream
+import java.io.DataOutputStream
+import java.io.RandomAccessFile
 import kotlin.test.*
 import org.junit.Test
 
 class CoreTest {
+    @Test fun javaRegionSignRoundTripAndWorldEdition() = inTemp { root ->
+        val world = File(root, "java-world").apply { mkdirs() }
+        GZIPOutputStream(File(world, "level.dat").outputStream()).use { it.write(byteArrayOf(10, 0, 0, 0)) }
+        val region = File(world, "region").apply { mkdirs() }
+        val source = ByteArrayOutputStream().also { bytes ->
+            DataOutputStream(bytes).use { out ->
+                out.writeByte(10); out.writeUTF("")
+                out.writeByte(9); out.writeUTF("block_entities")
+                out.writeByte(10); out.writeInt(1)
+                out.writeByte(8); out.writeUTF("id"); out.writeUTF("minecraft:oak_sign")
+                out.writeByte(10); out.writeUTF("front_text")
+                out.writeByte(9); out.writeUTF("messages")
+                out.writeByte(8); out.writeInt(1); out.writeUTF("{\"text\":\"Hello\"}")
+                out.writeByte(0); out.writeByte(0); out.writeByte(0)
+            }
+        }.toByteArray()
+        val packed = ByteArrayOutputStream().also { DeflaterOutputStream(it).use { zip -> zip.write(source) } }.toByteArray()
+        val file = File(region, "r.0.0.mca")
+        RandomAccessFile(file, "rw").use { raf ->
+            raf.setLength(3 * 4096L)
+            raf.writeInt((2 shl 8) or 1)
+            raf.seek(2 * 4096L)
+            raf.writeInt(packed.size + 1); raf.writeByte(2); raf.write(packed)
+        }
+        assertEquals(SafeWorldArchive.Edition.JAVA, SafeWorldArchive().edition(world))
+        assertEquals(listOf(0), JavaRegion.indices(file))
+        assertContentEquals(source, JavaRegion.read(file, 0))
+        val record = BigEndianNbt.parse(source)
+        val path = listOf("0", "block_entities", "0", "front_text", "messages", "0")
+        val changed = record.rewrite(mapOf(path to "{\"text\":\"你好\"}"))
+        JavaRegion.rewrite(file, 0, source, changed)
+        assertEquals("{\"text\":\"你好\"}", BigEndianNbt.parse(JavaRegion.read(file, 0)!!).texts.single { it.path == path }.value)
+        val archive = File(root, "world.zip")
+        SafeWorldArchive().export(world, archive)
+        val reread = SafeWorldArchive().extract(archive, File(root, "reread"))
+        assertEquals(SafeWorldArchive.Edition.JAVA, SafeWorldArchive().edition(reread))
+        assertContentEquals(changed, JavaRegion.read(File(reread, "region/r.0.0.mca"), 0))
+    }
     @Test fun rawtextPreservesStructureAndEscaping() {
         val source = "tellraw @a { \"rawtext\": [ {\"text\":\"Hello %s §a\"}, {\"selector\":\"@p\"}, {\"score\":{\"name\":\"@s\",\"objective\":\"quest\"}}, {\"translate\":\"map.quest\",\"with\":[\"Find the key\", {\"rawtext\":[{\"text\":\"Welcome\"}]}]} ] }"
         val plan = DisplayCommand.inspect(source)

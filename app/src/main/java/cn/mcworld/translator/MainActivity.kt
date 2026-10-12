@@ -88,7 +88,7 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { importFile.launch(arrayOf("*/*")) }, enabled = !state.busy) { Text("选择 .mcworld / ZIP") }
+                    Button(onClick = { importFile.launch(arrayOf("*/*")) }, enabled = !state.busy) { Text("选择地图 ZIP / .mcworld") }
                     OutlinedButton(onClick = { importFolder.launch(null) }, enabled = !state.busy) { Text("地图文件夹") }
                 }
             }
@@ -100,7 +100,12 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                         if (state.busy) {
                             if (state.progressTotal > 0) {
                                 LinearProgressIndicator(progress = { (state.progressCurrent.toFloat() / state.progressTotal).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
-                                Text("${state.progressCurrent} / ${state.progressTotal} ${if (state.progress.startsWith("资源文件")) "个资源文件" else "条数据库记录"}")
+                                val percent = (state.progressCurrent * 100 / state.progressTotal).coerceIn(0, 100)
+                                Text("$percent% · ${state.progressCurrent} / ${state.progressTotal} ${when {
+                                    state.progress.contains("资源文件") -> "个资源文件"
+                                    state.edition == "java" -> "个区域区块"
+                                    else -> "条数据库记录"
+                                }}")
                             } else LinearProgressIndicator(Modifier.fillMaxWidth())
                             OutlinedButton(onClick = model::pause) { Text("暂停任务") }
                         }
@@ -111,6 +116,9 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
             if (state.world.isNotEmpty()) {
                 item {
                     if (state.sourceName.isNotBlank()) Text("地图：${state.sourceName}")
+                    Text("地图版本：${when (state.edition) { "java" -> "Java 版"; "bedrock" -> "基岩版"; else -> "待识别" }}")
+                    if (state.edition == "java") Text("支持区域告示牌、可识别的命令方块显示文本和语言文件；其他区域文本会保留原文。导出为 Java 地图 ZIP。",
+                        style = MaterialTheme.typography.bodySmall)
                     Text("原文语言（可多选）", style = MaterialTheme.typography.titleSmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("en" to "英语", "ru" to "俄语", "de" to "德语", "fr" to "法语", "es" to "西班牙语").forEach { (value, label) ->
@@ -132,7 +140,7 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                         Button(onClick = {
                             val base = state.sourceName.substringBeforeLast('.').ifBlank { "Minecraft地图" }
                                 .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").take(100)
-                            exportWorld.launch("$base-简体中文.mcworld")
+                            exportWorld.launch("$base-简体中文.${if (state.edition == "java") "zip" else "mcworld"}")
                         }, enabled = !state.busy && state.entries.isNotEmpty() &&
                             !(state.activeOperation == "extract" && state.stage != "提取完成")) { Text("验证并导出地图") }
                     }
@@ -191,7 +199,7 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                         val intent = Intent(Intent.ACTION_SEND).setType("application/octet-stream").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         context.startActivity(Intent.createChooser(intent, "分享汉化地图"))
                     }.onFailure { model.message.value = "无法分享：${it.message}" }
-                }) { Text("分享已验证的 .mcworld") }
+                }) { Text("分享已验证的 ${if (state.edition == "java") "Java 地图 ZIP" else "基岩版 .mcworld"}") }
             }
             item {
                 val successful = state.entries.count { it.status in setOf("自动翻译", "手动修改") }
