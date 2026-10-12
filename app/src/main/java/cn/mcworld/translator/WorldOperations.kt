@@ -223,9 +223,11 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         store.save(state)
         } finally { NativeBridge.closeDb(totalDb) }
         val world = File(state.world)
-        val sourceLocale = mapOf("en" to "en_US", "ru" to "ru_RU", "de" to "de_DE",
-            "fr" to "fr_FR", "es" to "es_ES")[state.language] ?: "en_US"
-        val locales = setOf(sourceLocale, "en_US", "zh_CN") + if (state.language == "en") setOf("en_GB") else emptySet()
+        val languageLocales = mapOf("en" to "en_US", "ru" to "ru_RU", "de" to "de_DE",
+            "fr" to "fr_FR", "es" to "es_ES")
+        val selectedLanguages = state.sourceLanguages.ifEmpty { setOf(state.language) }
+        val locales = selectedLanguages.mapNotNull(languageLocales::get).toSet() + setOf("en_US", "zh_CN") +
+            if ("en" in selectedLanguages) setOf("en_GB") else emptySet()
         fun wanted(file: File): Boolean {
             if (!file.isFile || file.extension.lowercase() !in setOf("lang", "mcfunction", "json")) return false
             val relative = file.relativeTo(world).invariantSeparatorsPath
@@ -267,6 +269,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                 fun add(start: Int, end: Int, text: String, json: Boolean, label: String) {
                     if (text.isBlank()) return
                     addEntry(TextEntry(sha("$relative/$start/$end".toByteArray()), "$relative/$label", text,
+                        status = if (relative.endsWith("/zh_CN.lang", ignoreCase = true)) "保留原文" else "待处理",
                         file = relative, start = start, end = end, mode = if (json) "file-json" else "file-text"))
                 }
                 if (file.extension.lowercase() in setOf("lang", "mcfunction")) {
