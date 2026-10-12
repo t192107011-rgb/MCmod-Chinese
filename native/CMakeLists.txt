@@ -14,6 +14,16 @@ set(SPM_ENABLE_SHARED OFF CACHE BOOL "" FORCE)
 set(SPM_ENABLE_TCMALLOC OFF CACHE BOOL "" FORCE)
 set(SPM_BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(SPM_USE_BUILTIN_PROTOBUF ON CACHE BOOL "" FORCE)
+# Build the vendored Zstd sources as the target expected by LevelDB.
+file(GLOB ZSTD_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/zstd/lib/common/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/zstd/lib/compress/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/zstd/lib/decompress/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/zstd/lib/dictBuilder/*.c")
+add_library(libzstd_static STATIC ${ZSTD_SOURCES})
+target_include_directories(libzstd_static PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/zstd/lib")
+target_compile_definitions(libzstd_static PRIVATE ZSTD_LEGACY_SUPPORT=0)
 add_subdirectory(vendor/leveldb EXCLUDE_FROM_ALL)
 # The vendored LevelDB enables Zstd, but its target does not export zstd's
 # public header directory to its own compilation units on a clean CI build.
