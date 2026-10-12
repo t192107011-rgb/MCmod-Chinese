@@ -118,7 +118,21 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     fun resumeExtraction() = enqueue("extract")
-    fun language(value: String) { update { it.language = value } }
+    fun language(value: String) { update { state ->
+        require(value in setOf("en", "ru", "de", "fr", "es"))
+        val chosen = state.sourceLanguages
+        if (chosen.isEmpty()) chosen += state.language
+        if (value in chosen) {
+            if (chosen.size > 1) chosen.remove(value)
+        } else chosen += value
+        state.language = chosen.first()
+        if (state.activeOperation == "extract") {
+            state.resourceDone.clear()
+            state.entries.removeAll { it.file.isNotEmpty() }
+            state.issues.removeAll { !it.startsWith("db/") }
+            state.stage = "任务已暂停"
+        }
+    } }
     fun edit(id: String, value: String) { update { state ->
         val entry = state.entries.single { it.id == id }
         entry.translation = value; entry.status = "手动修改"; entry.reason = "待导出校验"
