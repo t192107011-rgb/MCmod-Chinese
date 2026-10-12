@@ -223,10 +223,27 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         store.save(state)
         } finally { NativeBridge.closeDb(totalDb) }
         val world = File(state.world)
+        val sourceLocale = mapOf("en" to "en_US", "ru" to "ru_RU", "de" to "de_DE",
+            "fr" to "fr_FR", "es" to "es_ES")[state.language] ?: "en_US"
+        val locales = setOf(sourceLocale, "en_US", "zh_CN") + if (state.language == "en") setOf("en_GB") else emptySet()
+        fun wanted(file: File): Boolean {
+            if (!file.isFile || file.extension.lowercase() !in setOf("lang", "mcfunction", "json")) return false
+            val relative = file.relativeTo(world).invariantSeparatorsPath
+            if (relative.startsWith("db/")) return false
+            val localized = file.extension.equals("lang", ignoreCase = true) && relative.contains("/texts/") &&
+                file.nameWithoutExtension.matches(Regex("[a-z]{2,3}_[A-Z]{2}"))
+            return !localized || file.nameWithoutExtension in locales
+        }
         val files = world.walkTopDown()
-            .filter { it.isFile && it.extension.lowercase() in setOf("lang", "mcfunction", "json") &&
-                !it.relativeTo(world).invariantSeparatorsPath.startsWith("db/") }
+            .filter(::wanted)
             .sortedBy { it.relativeTo(world).invariantSeparatorsPath }.toList()
+        val selectedPaths = files.mapTo(hashSetOf()) { it.relativeTo(world).invariantSeparatorsPath }
+        val excluded = state.resourceDone.filterNot { it in selectedPaths }
+        state.resourceDone.retainAll(selectedPaths)
+        state.entries.removeAll { it.file.isNotEmpty() && it.file !in selectedPaths }
+        state.issues.removeAll { issue -> excluded.any { file ->
+            issue.startsWith("$file:") || issue.startsWith("$file/") || issue.startsWith("$file：")
+        } }
         val totalFiles = files.size.toLong()
         state.progressCurrent = state.resourceDone.size.toLong()
         state.progressTotal = totalFiles
