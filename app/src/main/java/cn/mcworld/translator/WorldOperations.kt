@@ -11,6 +11,7 @@ import cn.mcworld.translator.core.SafeWorldArchive
 import cn.mcworld.translator.engine.NativeBridge
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.async
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
@@ -90,44 +91,67 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
 
     suspend fun extract(state: ProjectState) {
         require(state.world.isNotEmpty())
-        state.entries.clear(); state.issues.clear()
+        // Completed key ranges are durable checkpoints; unfinished ranges are rescanned.
+        if (state.extractedRecords.isEmpty()) {
+            state.entries.clear()
+            state.issues.clear()
+        } else {
+            state.entries.removeAll { it.file.isNotEmpty() }
+            state.issues.removeAll { !it.startsWith("db/") }
+        }
         val originals = File(store.directory, "records").apply { mkdirs() }
         fun addEntry(entry: TextEntry) {
-            require(state.entries.size < 100_000) { "可审阅文本超过 100,000 项，保留超限记录" }
+            require(state.entries.size < 100_000) { "可审阅文本超过 100,000 项" }
             state.entries.add(entry)
         }
-        var records = 0
-        var lastReported = 0
-        var lastSaved = System.currentTimeMillis()
-        val database = NativeBridge.openDb(File(state.world, "db").absolutePath)
+        val ranges = listOf(0, 64, 128, 192)
+        val totalDb = NativeBridge.openDb(File(state.world, "db").absolutePath)
         try {
-          val cursor = NativeBridge.cursor(database)
-          try {
-            while (true) {
             currentCoroutineContext().ensureActive()
-            val item = NativeBridge.nextTextCandidate(cursor) ?: break
-            val scanned = requireNotNull(item[2])
-            records += (scanned[0].toInt() and 255) or ((scanned[1].toInt() and 255) shl 8)
-            val key = item[0]
-            val raw = item[1]
-            if (key != null) {
+        val total = NativeBridge.countRecords(totalDb).also { require(it >= 0) }
+        val scanned = java.util.concurrent.atomic.AtomicLong(state.extractedRecords.values.sum())
+        state.progressTotal = total
+        state.progressCurrent = scanned.get()
+        store.writeProgress("已检查 ${scanned.get()} / $total 条数据库记录", scanned.get(), total)
+        store.save(state)
+
+        suspend fun scanRange(start: Int): Pair<ProjectState, Long> {
+            val part = ProjectState(state.id)
+            fun addEntry(entry: TextEntry) {
+                require(part.entries.size < 100_000) { "可审阅文本超过 100,000 项" }
+                part.entries.add(entry)
+            }
+            var records = 0L
+            var lastReported = 0L
+                val cursor = NativeBridge.cursorRange(totalDb, start, minOf(start + 64, 256))
+                try {
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val item = NativeBridge.nextTextCandidate(cursor) ?: break
+                        val count = requireNotNull(item[2])
+                        val increment = (count[0].toInt() and 255) or ((count[1].toInt() and 255) shl 8)
+                        records += increment
+                        val processed = scanned.addAndGet(increment.toLong())
+                        val key = item[0]
+                        val raw = item[1]
+                        if (key != null) {
             val actor = key.take(11).toByteArray().contentEquals("actorprefix".toByteArray())
             val player = key.contentEquals("~local_player".toByteArray()) || key.toString(Charsets.ISO_8859_1).startsWith("player_server_")
             val chunk = key.size in listOf(9, 13) && (key.last().toInt() and 255) in listOf(0x31, 0x32)
             if (actor || player || chunk) {
                 val keyHex = hex(key)
-                val checkpoint = state.entries.size
-                if (raw == null) state.issues += "db/$keyHex：记录超过 32 MiB，未修改"
+                val checkpoint = part.entries.size
+                if (raw == null) part.issues += "db/$keyHex：记录超过 32 MiB，未修改"
                 else try {
                     val record = LittleEndianNbt.parse(raw, maxNodes = 100_000, copyBytes = false)
                     val fields = record.texts.associateBy { it.path }
-                    val before = state.entries.size
+                    val before = part.entries.size
                     fun add(text: LittleEndianNbt.Text, mode: String = "text") {
                         if (text.value.isBlank()) return
                         val actualMode = if (mode == "text" && text.value.trimStart().startsWith('{')) "rawtext" else mode
                         if (actualMode in setOf("command", "rawtext")) {
                             val plan = DisplayCommand.inspect(if (actualMode == "rawtext") "tellraw @a " + text.value else text.value)
-                            state.issues += plan.issues.map { "db/$keyHex/${text.path.joinToString("/")}：$it，未修改未知参数" }
+                            part.issues += plan.issues.map { "db/$keyHex/${text.path.joinToString("/")}：$it，未修改未知参数" }
                             plan.spans.forEachIndexed { index, span ->
                                 addEntry(TextEntry(sha("$keyHex/${text.path}/$index".toByteArray()),
                                     "db/$keyHex/${text.path.joinToString("/")}/显示文本[$index]", span.text,
@@ -145,7 +169,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                         }
                         if (id == "CommandBlock" && path == listOf(root, "Command")) add(text, "command")
                         if (id?.lowercase() == "npc" && path.last() in listOf("InterativeText", "Actions", "Dialog", "Dialogue")) {
-                            state.issues += "db/$keyHex/${path.joinToString("/")}：NPC 数据库对话版本尚未验证，保留原文；支持附带 dialogue JSON"
+                            part.issues += "db/$keyHex/${path.joinToString("/")}：NPC 数据库对话版本尚未验证，保留原文；支持附带 dialogue JSON"
                         }
                         val tag = path.indexOfLast { it == "tag" }
                         if (tag > 0) {
@@ -158,24 +182,44 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                                     record.types[path.take(tag + 2)] == 9 && record.types[path.dropLast(1)] == 10)) add(text)
                         }
                     }
-                    if (state.entries.size > before) File(originals, "$keyHex.nbt").writeBytes(raw)
+                    if (part.entries.size > before) File(originals, "$keyHex.nbt").writeBytes(raw)
                 } catch (failure: Exception) {
-                    state.entries.subList(checkpoint, state.entries.size).clear()
-                    state.issues += "db/$keyHex：${failure.message}，未修改"
+                    part.entries.subList(checkpoint, part.entries.size).clear()
+                    part.issues += "db/$keyHex：${failure.message}，未修改"
                 }
             }
+                        }
+                        if (records - lastReported >= 1000) {
+                            synchronized(store) {
+                                store.writeProgress("已检查 $processed / $total 条数据库记录；提取 ${state.entries.size + part.entries.size} 项文字",
+                                    processed, total)
+                            }
+                            lastReported = records
+                        }
+                    }
+                } finally { NativeBridge.closeCursor(cursor) }
+            return part to records
+        }
+        kotlinx.coroutines.coroutineScope {
+            val dispatcher = kotlinx.coroutines.Dispatchers.Default.limitedParallelism(2)
+            val pending = ranges.filterNot { state.extractedRecords.containsKey(it) }
+                .map { start -> start to async(dispatcher) { scanRange(start) } }
+            for ((start, job) in pending) {
+                val (part, count) = job.await()
+                state.entries.addAll(part.entries)
+                state.issues.addAll(part.issues)
+                require(state.entries.size <= 100_000) { "可审阅文本超过 100,000 项" }
+                state.extractedRecords[start] = count
+                state.progressCurrent = state.extractedRecords.values.sum()
+                state.progress = "已完成 ${state.extractedRecords.size} / 4 个数据库区间；已检查 ${state.progressCurrent} / $total 条"
+                store.save(state)
             }
-            if (records - lastReported >= 500) {
-                state.progress = "已检查 $records 条数据库记录，提取 ${state.entries.size} 项文字"
-                lastReported = records
-            }
-            val now = System.currentTimeMillis()
-            if (now - lastSaved >= 15000) { store.save(state); lastSaved = now }
-            }
-          } finally { NativeBridge.closeCursor(cursor) }
-        } finally { NativeBridge.closeDb(database) }
-        state.progress = "数据库检查完成（$records 条），正在检查资源文件"
+        }
+        state.progressCurrent = total
+        state.progress = "数据库检查完成（$total 条），正在检查资源文件"
+        store.writeProgress(state.progress, total, total)
         store.save(state)
+        } finally { NativeBridge.closeDb(totalDb) }
         val world = File(state.world)
         for (file in world.walkTopDown()) {
             currentCoroutineContext().ensureActive()
@@ -243,6 +287,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         }
         require(state.entries.size <= 100_000) { "可审阅文本超过 100,000 项" }
         state.stage = "提取完成"; state.progress = "${state.entries.size} 项文字，${state.issues.size} 条保留记录"
+        store.clearProgress()
         store.save(state)
     }
 
