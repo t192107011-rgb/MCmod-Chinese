@@ -150,6 +150,28 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
     fun table(uri: Uri, importing: Boolean) {
         enqueue(if (importing) "table-import" else "table-export", "tableUri" to uri.toString())
     }
+    fun batchExport(uri: Uri, batchSize: Int) {
+        enqueue("batch-export", "tableUri" to uri.toString(), "batchSize" to batchSize)
+    }
+    private var pendingBatchUris: Array<String> = preferences.getString("pendingBatches", "")!!.split("\n").filter(String::isNotBlank).toTypedArray()
+    fun batchImport(uris: List<Uri>, resolution: String = "preview") {
+        if (resolution == "preview") {
+            uris.forEach { uri ->
+                runCatching { getApplication<Application>().contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            }
+            pendingBatchUris = uris.map(Uri::toString).toTypedArray()
+            preferences.edit().putString("pendingBatches", pendingBatchUris.joinToString("\n")).apply()
+        }
+        val sources = pendingBatchUris
+        if (sources.isEmpty()) return
+        enqueue("batch-import", "tableUris" to sources, "resolution" to resolution)
+    }
+    fun chooseConflict(id: String, useIncoming: Boolean) {
+        update { state ->
+            require(state.importConflicts.any { it.id == id })
+            state.conflictChoices[id] = useIncoming
+        }
+    }
     fun cleanup() {
         if (mutable.value.busy) return
         viewModelScope.launch(Dispatchers.IO) {
