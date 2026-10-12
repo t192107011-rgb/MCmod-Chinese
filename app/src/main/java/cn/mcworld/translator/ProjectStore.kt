@@ -30,16 +30,21 @@ data class TextEntry(
 data class ProjectState(val id: String, var world: String = "", var language: String = "en",
     var stage: String = "等待导入", var progress: String = "", var busy: Boolean = false,
     val entries: MutableList<TextEntry> = mutableListOf(), val issues: MutableList<String> = mutableListOf(),
-    var export: String = "", var sourceName: String = "", var progressCurrent: Long = 0,
-    var progressTotal: Long = 0, val extractedRecords: MutableMap<Int, Long> = mutableMapOf(),
-    var activeOperation: String = "", val resourceDone: MutableSet<String> = mutableSetOf(),
+    var export: String = "", val conflictChoices: MutableMap<String, Boolean> = mutableMapOf(),
+    val importConflicts: MutableList<ImportConflict> = mutableListOf(),
+    var sourceName: String = "", var progressCurrent: Long = 0, var progressTotal: Long = 0,
+    val extractedRecords: MutableMap<Int, Long> = mutableMapOf(), var activeOperation: String = "",
+    val resourceDone: MutableSet<String> = mutableSetOf(),
     val sourceLanguages: MutableSet<String> = mutableSetOf()) {
     fun json() = JSONObject().put("id", id).put("world", world).put("language", language)
         .put("stage", stage).put("progress", progress).put("busy", busy).put("export", export)
         .put("entries", JSONArray(entries.map { it.json() })).put("issues", JSONArray(issues))
+        .put("conflictChoices", JSONObject(conflictChoices as Map<*, *>))
+        .put("importConflicts", JSONArray(importConflicts.map { it.json() }))
         .put("sourceName", sourceName).put("progressCurrent", progressCurrent).put("progressTotal", progressTotal)
-        .put("extractedRecords", JSONObject(extractedRecords.mapKeys { it.key.toString() })).put("activeOperation", activeOperation)
-        .put("resourceDone", JSONArray(resourceDone.toList())).put("sourceLanguages", JSONArray(sourceLanguages.toList()))
+        .put("extractedRecords", JSONObject(extractedRecords.mapKeys { it.key.toString() }))
+        .put("activeOperation", activeOperation).put("resourceDone", JSONArray(resourceDone.toList()))
+        .put("sourceLanguages", JSONArray(sourceLanguages.toList()))
     companion object {
         fun from(j: JSONObject): ProjectState {
             val entries = j.getJSONArray("entries"); val issues = j.getJSONArray("issues")
@@ -47,6 +52,8 @@ data class ProjectState(val id: String, var world: String = "", var language: St
                 j.getString("progress"), j.getBoolean("busy"),
                 (0 until entries.length()).map { TextEntry.from(entries.getJSONObject(it)) }.toMutableList(),
                 (0 until issues.length()).map { issues.getString(it) }.toMutableList(), j.getString("export"),
+                j.optJSONObject("conflictChoices")?.let { choices -> choices.keys().asSequence().associateWith { choices.getBoolean(it) }.toMutableMap() } ?: mutableMapOf(),
+                j.optJSONArray("importConflicts")?.let { conflicts -> (0 until conflicts.length()).map { ImportConflict.from(conflicts.getJSONObject(it)) }.toMutableList() } ?: mutableListOf(),
                 j.optString("sourceName", ""), j.optLong("progressCurrent", 0), j.optLong("progressTotal", 0),
                 j.optJSONObject("extractedRecords")?.let { completed -> completed.keys().asSequence().associate { it.toInt() to completed.getLong(it) }.toMutableMap() } ?: mutableMapOf(),
                 j.optString("activeOperation", ""),
@@ -54,6 +61,11 @@ data class ProjectState(val id: String, var world: String = "", var language: St
                 j.optJSONArray("sourceLanguages")?.let { selected -> (0 until selected.length()).map { selected.getString(it) }.toMutableSet() } ?: mutableSetOf())
         }
     }
+}
+
+data class ImportConflict(val id: String, val original: String, val current: String, val incoming: String) {
+    fun json() = JSONObject().put("id", id).put("original", original).put("current", current).put("incoming", incoming)
+    companion object { fun from(j: JSONObject) = ImportConflict(j.getString("id"), j.getString("original"), j.getString("current"), j.getString("incoming")) }
 }
 
 class ProjectStore(context: Context, val id: String) {
