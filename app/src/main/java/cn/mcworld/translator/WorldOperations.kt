@@ -578,7 +578,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         if (entry.mode in setOf("file-text", "command", "file-command")) require(entry.translation.none { it == '\n' || it == '\r' }) { "不允许插入新命令行" }
     }
 
-    private suspend fun copyWorld(source: File, target: File) {
+    private suspend fun copyWorld(source: File, target: File, progress: (Long) -> Unit = {}) {
         require(target.mkdir())
         var total = 0L; var count = 0
         for (file in source.walkTopDown()) {
@@ -597,42 +597,80 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                         val size = input.read(buffer); if (size < 0) break
                         total += size; require(total <= 2L * 1024 * 1024 * 1024)
                         output.write(buffer, 0, size)
+                        progress(total)
                     }
                 }
             }
         }
     }
 
-    private suspend fun databaseDigest(world: File, overrides: Map<String, String> = emptyMap()): String {
+    private suspend fun databaseDigest(world: File, overrides: Map<String, String> = emptyMap(),
+        progress: (Long) -> Unit = {}): String {
         val digest = java.security.MessageDigest.getInstance("SHA-256")
         val found = HashSet<String>()
+        var scanned = 0L
         forRecords(world) { key, value ->
             val id = hex(key)
             val hash = overrides[id]?.also { found += id } ?: sha(requireNotNull(value))
             digest.update(java.nio.ByteBuffer.allocate(4).putInt(key.size).array())
             digest.update(key)
             digest.update(unhex(hash))
+            scanned++
+            if (scanned % 1000L == 0L) progress(scanned)
         }
+        progress(scanned)
         require(found == overrides.keys) { "数据库记录缺失" }
         return hex(digest.digest())
     }
 
-    private suspend fun filesDigest(world: File, skipDatabase: Boolean): String {
+    private suspend fun filesDigest(world: File, skipDatabase: Boolean,
+        progress: (Long) -> Unit = {}): String {
         val digest = java.security.MessageDigest.getInstance("SHA-256")
         val files = world.walkTopDown().filter { it.isFile &&
             (!skipDatabase || !it.relativeTo(world).invariantSeparatorsPath.startsWith("db/")) }
             .map { it.relativeTo(world).invariantSeparatorsPath }.sorted().toList()
+        var checked = 0L
         for (relative in files) {
             currentCoroutineContext().ensureActive()
             val path = relative.toByteArray(Charsets.UTF_8)
             digest.update(java.nio.ByteBuffer.allocate(4).putInt(path.size).array())
             digest.update(path)
-            digest.update(unhex(shaFile(File(world, relative))))
+            val fileHash = java.security.MessageDigest.getInstance("SHA-256")
+            File(world, relative).inputStream().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                while (true) {
+                    currentCoroutineContext().ensureActive()
+                    val size = input.read(buffer)
+                    if (size < 0) break
+                    fileHash.update(buffer, 0, size)
+                    checked += size
+                    if (checked % (8L * 1024 * 1024) < size) progress(checked)
+                }
+            }
+            digest.update(fileHash.digest())
+            progress(checked)
         }
         return hex(digest.digest())
     }
 
     suspend fun export(state: ProjectState): File {
+        var lastUpdate = 0L
+        var lastText = ""
+        var lastPoint = -1
+        fun report(text: String, point: Int, force: Boolean = false) {
+            val now = System.currentTimeMillis()
+            val bounded = point.coerceIn(0, 1000)
+            if (force || now - lastUpdate >= 1000 && (text != lastText || bounded != lastPoint)) {
+                state.progress = text
+                state.progressCurrent = bounded.toLong()
+                state.progressTotal = 1000
+                store.writeProgress(text, bounded.toLong(), 1000)
+                lastUpdate = now
+                lastText = text
+                lastPoint = bounded
+            }
+        }
+        report("导出准备：正在校验译文", 0, true)
         state.entries.forEach { validate(it) }
         val edition = SafeWorldArchive().edition(File(state.world))
         val target = File(store.directory, "export-work-${System.nanoTime()}")
@@ -640,11 +678,25 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         val output = File(exportedFolder, "MinecraftWorldTranslator-${state.id}-${System.nanoTime()}.${if (edition == SafeWorldArchive.Edition.JAVA) "zip" else "mcworld"}")
         val restored = File(store.directory, "export-check-${System.nanoTime()}")
         try {
-            copyWorld(File(state.world), target)
+            val source = File(state.world)
+            val sourceBytes = source.walkTopDown().filter { it.isFile }.sumOf { it.length() }.coerceAtLeast(1L)
+            report("导出 1/6：复制地图工作副本", 0, true)
+            copyWorld(source, target) { copied ->
+                report("导出 1/6：复制地图工作副本 ${copied / 1024 / 1024} MiB", (copied * 150 / sourceBytes).toInt())
+            }
+            report("导出 2/6：写入翻译", 150, true)
             val changes = state.entries.filter { it.status in setOf("自动翻译", "手动修改") && it.translation != it.original }
+            val recordGroups = changes.filter { it.recordKey.isNotEmpty() }.groupBy { it.recordKey }
+            val fileGroups = changes.filter { it.file.isNotEmpty() }.groupBy { it.file }
+            val rewriteTotal = (recordGroups.size + fileGroups.size).coerceAtLeast(1)
+            var rewritten = 0
+            fun reportRewrite() {
+                rewritten++
+                report("导出 2/6：已写入 $rewritten / $rewriteTotal 组", 150 + rewritten * 150 / rewriteTotal)
+            }
             val expected = linkedMapOf<String, String>()
             if (edition == SafeWorldArchive.Edition.JAVA) {
-                for ((key, items) in changes.filter { it.recordKey.startsWith("java:") }.groupBy { it.recordKey }) {
+                for ((key, items) in recordGroups) {
                     currentCoroutineContext().ensureActive()
                     val relative = key.removePrefix("java:").substringBeforeLast('#')
                     val index = key.substringAfterLast('#').toInt()
@@ -676,11 +728,12 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                     }
                     val rewritten = record.rewrite(replacements)
                     JavaRegion.rewrite(destination, index, original, rewritten)
+                    reportRewrite()
                 }
             } else {
             val db = NativeBridge.openDb(File(target, "db").absolutePath)
             try {
-                for ((key, items) in changes.filter { it.recordKey.isNotEmpty() }.groupBy { it.recordKey }) {
+                for ((key, items) in recordGroups) {
                     currentCoroutineContext().ensureActive()
                     val original = File(store.directory, "records/$key.nbt").readBytes()
                     val record = LittleEndianNbt.parse(original)
@@ -705,11 +758,11 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                     val rewritten = record.rewrite(replacements)
                     NativeBridge.write(db, arrayOf(unhex(key)), arrayOf(original), arrayOf(rewritten))
                     expected[key] = sha(rewritten)
+                    reportRewrite()
                 }
             } finally { NativeBridge.closeDb(db) }
-            require(databaseDigest(File(state.world), expected) == databaseDigest(target)) { "写回数据库后完整性校验失败" }
             }
-            for ((relative, items) in changes.filter { it.file.isNotEmpty() }.groupBy { it.file }) {
+            for ((relative, items) in fileGroups) {
                 currentCoroutineContext().ensureActive()
                 val file = File(target, relative)
                 val content = file.readText()
@@ -734,14 +787,43 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                 }
                 if (file.extension.lowercase() == "json") DisplayCommand.jsonStrings(result.toString())
                 file.writeText(result.toString())
+                reportRewrite()
+            }
+            report("导出 2/6：译文写入完成", 300, true)
+            val originalDbDigest = if (edition == SafeWorldArchive.Edition.BEDROCK) {
+                report("导出 3/6：校验原数据库", 310, true)
+                databaseDigest(source, expected) { count -> report("导出 3/6：原数据库已检查 $count 条", 310) }
+            } else null
+            if (originalDbDigest != null) {
+                report("导出 3/6：校验写回数据库", 350, true)
+                require(originalDbDigest == databaseDigest(target) { count ->
+                    report("导出 3/6：写回数据库已检查 $count 条", 350)
+                }) { "写回数据库后完整性校验失败" }
             }
             val coroutine = currentCoroutineContext()
-            SafeWorldArchive().export(target, output) { coroutine.ensureActive() }
-            val root = SafeWorldArchive().extract(output, restored) { coroutine.ensureActive() }
-            if (edition == SafeWorldArchive.Edition.BEDROCK)
-                require(databaseDigest(File(state.world), expected) == databaseDigest(root)) { "导出后数据库重新读取失败" }
-            require(filesDigest(target, edition == SafeWorldArchive.Edition.BEDROCK) ==
-                filesDigest(root, edition == SafeWorldArchive.Edition.BEDROCK)) { "导出文件校验失败" }
+            val archiveBytes = target.walkTopDown().filter { it.isFile }.sumOf { it.length() }.coerceAtLeast(1L)
+            report("导出 4/6：打包地图", 400, true)
+            SafeWorldArchive().export(target, output,
+                progress = { bytes -> report("导出 4/6：已打包 ${bytes / 1024 / 1024} MiB",
+                    400 + (bytes * 250 / archiveBytes).toInt()) }) { coroutine.ensureActive() }
+            report("导出 5/6：重新读取压缩包", 650, true)
+            val root = SafeWorldArchive().extract(output, restored,
+                progress = { bytes -> report("导出 5/6：已读取 ${bytes / 1024 / 1024} MiB",
+                    650 + (bytes * 200 / archiveBytes).toInt()) }) { coroutine.ensureActive() }
+            if (originalDbDigest != null) {
+                report("导出 6/6：复核导出数据库", 850, true)
+                require(originalDbDigest == databaseDigest(root) { count ->
+                    report("导出 6/6：已复核数据库 $count 条", 850)
+                }) { "导出后数据库重新读取失败" }
+            }
+            report("导出 6/6：复核文件", 880, true)
+            val targetFilesDigest = filesDigest(target, edition == SafeWorldArchive.Edition.BEDROCK) { bytes ->
+                report("导出 6/6：原文件已检查 ${bytes / 1024 / 1024} MiB", 880)
+            }
+            require(targetFilesDigest == filesDigest(root, edition == SafeWorldArchive.Edition.BEDROCK) { bytes ->
+                report("导出 6/6：压缩包文件已检查 ${bytes / 1024 / 1024} MiB", 920)
+            }) { "导出文件校验失败" }
+            report("导出验证通过，正在写入所选位置", 950, true)
             state.export = output.absolutePath
             state.stage = "导出验证通过"
             state.progress = "${if (edition == SafeWorldArchive.Edition.JAVA) "Java 区域文件" else "基岩版数据库"}与导出文件校验通过；待处理和失败项目保留原文"
