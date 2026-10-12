@@ -23,7 +23,7 @@ class SafeWorldArchive(private val limits: Limits = Limits()) {
     init { require(limits.bytes > 0 && limits.files > 0 && limits.ratio > 0 && limits.depth > 0) }
 
     /** Caller owns the input. Only a new destination is ever created or removed. */
-    fun extract(input: File, destination: File, checkCancellation: () -> Unit = {}): File {
+    fun extract(input: File, destination: File, progress: (Long) -> Unit = {}, checkCancellation: () -> Unit = {}): File {
         require(!destination.exists() && destination.mkdir()) { "Work destination already exists or cannot be created" }
         try {
             var total = 0L
@@ -64,6 +64,7 @@ class SafeWorldArchive(private val limits: Limits = Limits()) {
                                 if (count < 0) break
                                 actual += count
                                 total += count
+                                progress(total)
                                 require(total <= limits.bytes && actual <= entry.size) { "ZIP expanded-size limit" }
                                 crc.update(buffer, 0, count)
                                 output.write(buffer, 0, count)
@@ -128,7 +129,7 @@ class SafeWorldArchive(private val limits: Limits = Limits()) {
     }
 
     /** Database must have been closed and revalidated by the caller before this operation. */
-    fun export(world: File, output: File, checkCancellation: () -> Unit = {}) {
+    fun export(world: File, output: File, progress: (Long) -> Unit = {}, checkCancellation: () -> Unit = {}) {
         require(worldRoot(world).canonicalFile == world.canonicalFile) { "Export requires normalized world root" }
         require(!output.canonicalPath.startsWith(world.canonicalPath + File.separator)) { "Output cannot be inside the world" }
         require(output.createNewFile()) { "Export destination must be new" }
@@ -158,6 +159,7 @@ class SafeWorldArchive(private val limits: Limits = Limits()) {
                                     if (count < 0) break
                                     total += count
                                     require(total <= limits.bytes) { "Export size limit" }
+                                    progress(total)
                                     zip.write(buffer, 0, count)
                                 }
                             }
