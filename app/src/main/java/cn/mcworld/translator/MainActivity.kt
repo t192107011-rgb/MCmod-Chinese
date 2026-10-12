@@ -124,12 +124,8 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                 item {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { importTable.launch(arrayOf("application/json", "text/plain", "application/zip", "application/octet-stream")) }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导入翻译表") }
-                        OutlinedButton(onClick = {
-                            val estimated = state.entries.sumOf { it.json().toString().toByteArray(Charsets.UTF_8).size.toLong() }
-                            if (state.entries.size > batchSize || estimated > TranslationBatches.LIMIT - 4096)
-                                exportBatches.launch("Minecraft翻译表-分批.zip")
-                            else exportTable.launch("Minecraft翻译表.json")
-                        }, enabled = !state.busy && state.entries.isNotEmpty()) { Text("导出翻译表") }
+                        OutlinedButton(onClick = { exportTable.launch("Minecraft翻译表.json") },
+                            enabled = !state.busy && state.entries.isNotEmpty()) { Text("导出翻译表") }
                         Button(onClick = {
                             val base = state.sourceName.substringBeforeLast('.').ifBlank { "Minecraft地图" }
                                 .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").take(100)
