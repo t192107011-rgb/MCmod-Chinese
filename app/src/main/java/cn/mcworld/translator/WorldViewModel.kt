@@ -3,6 +3,7 @@ package cn.mcworld.translator
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.ExistingWorkPolicy
@@ -38,11 +39,16 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
                 if (info.none { !it.state.isFinished }) {
                     initial.busy = false
                     initial.stage = "任务中断，可重新处理"
+                    if (initial.activeOperation == "extract") {
+                        initial.progressCurrent = initial.extractedRecords.values.sum()
+                        initialStore.clearProgress()
+                    }
                     initialStore.save(initial)
                 }
             }
             var observedStore = initialStore
             var observedVersion = -1L
+            var observedProgress = -1L
             while (true) {
                 val activeStore = store
                 val version = activeStore.stateVersion()
@@ -50,6 +56,13 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
                     mutable.value = activeStore.read()
                     observedStore = activeStore
                     observedVersion = version
+                }
+                val progressVersion = activeStore.progressVersion()
+                if (progressVersion != observedProgress) {
+                    activeStore.readProgress()?.let { (text, current, total) ->
+                        mutable.value = mutable.value.copy(progress = text, progressCurrent = current, progressTotal = total)
+                    }
+                    observedProgress = progressVersion
                 }
                 delay(750)
             }
@@ -61,18 +74,50 @@ class WorldViewModel(application: Application) : AndroidViewModel(application) {
             getApplication<Application>().contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             projectId = UUID.randomUUID().toString(); store = ProjectStore(getApplication(), projectId)
             preferences.edit().putString("active", projectId).apply()
-            store.save(ProjectState(projectId)); mutable.value = store.read()
+            val name = if (folder) DocumentFile.fromTreeUri(getApplication(), uri)?.name
+                else DocumentFile.fromSingleUri(getApplication(), uri)?.name
+            store.save(ProjectState(projectId, sourceName = name.orEmpty())); mutable.value = store.read()
             enqueue("import", "source" to uri.toString(), "folder" to folder)
         } catch (failure: Exception) { message.value = "无法保留访问权限：${failure.message}" }
     }
     fun enqueue(operation: String, vararg extra: Pair<String, Any>) {
         if (mutable.value.busy) return
         val data = workDataOf("project" to projectId, "operation" to operation, *extra)
-        val state = store.read(); state.busy = true; store.save(state); mutable.value = state
+        val state = store.read(); state.busy = true; state.activeOperation = operation; store.save(state); mutable.value = state
         workManager.enqueueUniqueWork("world-$projectId", ExistingWorkPolicy.KEEP,
             OneTimeWorkRequestBuilder<WorldWorker>().setInputData(data).build())
     }
-    fun cancel() { workManager.cancelUniqueWork("world-$projectId") }
+    fun cancel() { pause() }
+    val reuseEnabled = MutableStateFlow(preferences.getBoolean("reuse", true))
+    val chineseEnabled = MutableStateFlow(preferences.getBoolean("chinese", true))
+    fun setReuse(value: Boolean) { preferences.edit().putBoolean("reuse", value).apply(); reuseEnabled.value = value }
+    fun setChinese(value: Boolean) { preferences.edit().putBoolean("chinese", value).apply(); chineseEnabled.value = value }
+    fun pause() {
+        val currentId = projectId
+        val currentStore = store
+        workManager.cancelUniqueWork("world-$currentId")
+        viewModelScope.launch(Dispatchers.IO) {
+            repeat(120) {
+                val active = workManager.getWorkInfosForUniqueWork("world-$currentId").get().any { !it.state.isFinished }
+                if (!active) {
+                    val state = currentStore.read()
+                    if (state.busy) {
+                        state.busy = false
+                        state.stage = "任务已暂停"
+                        if (state.activeOperation == "extract") {
+                            currentStore.clearProgress()
+                            state.progressCurrent = state.extractedRecords.values.sum()
+                            state.progress = "已完成 ${state.extractedRecords.size} / 4 个数据库区间；可继续提取"
+                        }
+                        currentStore.save(state)
+                    }
+                    return@launch
+                }
+                delay(500)
+            }
+        }
+    }
+    fun resumeExtraction() = enqueue("extract")
     fun language(value: String) { update { it.language = value } }
     fun edit(id: String, value: String) { update { state ->
         val entry = state.entries.single { it.id == id }
