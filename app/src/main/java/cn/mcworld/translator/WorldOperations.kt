@@ -96,8 +96,10 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
             state.entries.clear()
             state.issues.clear()
         } else {
-            state.entries.removeAll { it.file.isNotEmpty() }
-            state.issues.removeAll { !it.startsWith("db/") }
+            state.entries.removeAll { it.file.isNotEmpty() && it.file !in state.resourceDone }
+            state.issues.removeAll { issue -> !issue.startsWith("db/") && state.resourceDone.none { file ->
+                issue.startsWith("$file:") || issue.startsWith("$file/") || issue.startsWith("$file：")
+            } }
         }
         val originals = File(store.directory, "records").apply { mkdirs() }
         fun addEntry(entry: TextEntry) {
@@ -221,12 +223,26 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         store.save(state)
         } finally { NativeBridge.closeDb(totalDb) }
         val world = File(state.world)
-        for (file in world.walkTopDown()) {
+        val files = world.walkTopDown()
+            .filter { it.isFile && it.extension.lowercase() in setOf("lang", "mcfunction", "json") &&
+                !it.relativeTo(world).invariantSeparatorsPath.startsWith("db/") }
+            .sortedBy { it.relativeTo(world).invariantSeparatorsPath }.toList()
+        val totalFiles = files.size.toLong()
+        state.progressCurrent = state.resourceDone.size.toLong()
+        state.progressTotal = totalFiles
+        state.progress = "资源文件 ${state.progressCurrent} / $totalFiles"
+        store.writeProgress(state.progress, state.progressCurrent, totalFiles)
+        store.save(state)
+
+        suspend fun scanResource(file: File): Pair<List<TextEntry>, List<String>> {
             currentCoroutineContext().ensureActive()
-            if (file.isDirectory || file.extension.lowercase() !in setOf("lang", "mcfunction", "json")) continue
             val relative = file.relativeTo(world).invariantSeparatorsPath
-            if (relative.startsWith("db/")) continue
-            val checkpoint = state.entries.size
+            val part = ProjectState(state.id)
+            fun addEntry(entry: TextEntry) {
+                require(part.entries.size < 100_000) { "可审阅文本超过 100,000 项" }
+                part.entries.add(entry)
+            }
+            val checkpoint = part.entries.size
             try {
                 require(file.length() <= 8 * 1024 * 1024) { "文本文件超过 8 MiB" }
                 val source = Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
@@ -249,7 +265,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                                 if (separator > 0) add(offset + separator + 1, offset + body.length, body.substring(separator + 1), false, "第 $lineNo 行")
                             } else {
                                 val plan = DisplayCommand.inspect(body)
-                                state.issues += plan.issues.map { "$relative:$lineNo：$it，保留未知参数" }
+                                part.issues += plan.issues.map { "$relative:$lineNo：$it，保留未知参数" }
                                 plan.spans.forEach { add(offset + it.start, offset + it.end, it.text, it.json, "第 $lineNo 行") }
                             }
                         }
@@ -257,6 +273,7 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                     }
                 } else {
                     val strings = DisplayCommand.jsonStrings(source)
+                    val translatePaths = strings.asSequence().filter { it.path.lastOrNull() == "translate" }.map { it.path }.toHashSet()
                     var known = false
                     for (text in strings) {
                         val path = text.path
@@ -264,13 +281,13 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                         val plainDialogue = dialogue && (path.size == 4 && path.last() in setOf("text", "npc_name") || path.size == 6 && path[3] == "buttons" && path.last() == "name")
                         val rawText = path.lastOrNull() == "text" && path.size >= 3 && path[path.size - 3] == "rawtext"
                         val withString = path.size >= 2 && path[path.size - 2] == "with" &&
-                            strings.any { it.path == path.dropLast(2) + "translate" }
+                            (path.dropLast(2) + "translate") in translatePaths
                         if (plainDialogue || rawText || withString) {
                             add(text.start, text.end, text.text, true, path.joinToString("/")); known = true
                         }
                         if (dialogue && path.getOrNull(path.size - 2) in setOf("commands", "on_open_commands", "on_close_commands")) {
                             val plan = DisplayCommand.inspect(text.text)
-                            state.issues += plan.issues.map { "$relative/${path.joinToString("/")}：$it，未修改" }
+                            part.issues += plan.issues.map { "$relative/${path.joinToString("/")}：$it，未修改" }
                             plan.spans.forEachIndexed { index, span ->
                                 addEntry(TextEntry(sha("$relative/${text.start}/command/$index".toByteArray()),
                                     "$relative/${path.joinToString("/")}/显示文本[$index]", span.text,
@@ -278,11 +295,32 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                             }
                         }
                     }
-                    if (!known && strings.isNotEmpty()) state.issues += "$relative：没有已识别的显示文本 schema，未修改资源或脚本标识符"
+                    if (!known && strings.isNotEmpty()) part.issues += "$relative：没有已识别的显示文本 schema，未修改资源或脚本标识符"
                 }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (failure: Exception) {
-                state.entries.subList(checkpoint, state.entries.size).clear()
-                state.issues += "$relative：${failure.message}，未修改"
+                part.entries.subList(checkpoint, part.entries.size).clear()
+                part.issues += "$relative：${failure.message}，未修改"
+            }
+            return part.entries to part.issues
+        }
+        kotlinx.coroutines.coroutineScope {
+            val dispatcher = kotlinx.coroutines.Dispatchers.Default.limitedParallelism(2)
+            val pending = files.filterNot { it.relativeTo(world).invariantSeparatorsPath in state.resourceDone }
+            for (batch in pending.chunked(8)) {
+                currentCoroutineContext().ensureActive()
+                val results = batch.map { file -> async(dispatcher) { scanResource(file) } }.map { it.await() }
+                for ((index, result) in results.withIndex()) {
+                    state.entries.addAll(result.first)
+                    state.issues.addAll(result.second)
+                    state.resourceDone += batch[index].relativeTo(world).invariantSeparatorsPath
+                }
+                require(state.entries.size <= 100_000) { "可审阅文本超过 100,000 项" }
+                state.progressCurrent = state.resourceDone.size.toLong()
+                state.progress = "资源文件 ${state.progressCurrent} / $totalFiles；提取 ${state.entries.size} 项文字"
+                store.save(state)
+                store.writeProgress(state.progress, state.progressCurrent, totalFiles)
             }
         }
         require(state.entries.size <= 100_000) { "可审阅文本超过 100,000 项" }
