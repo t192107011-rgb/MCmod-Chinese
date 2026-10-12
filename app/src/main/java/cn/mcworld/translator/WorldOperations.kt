@@ -75,6 +75,74 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
             state.stage = "翻译表已导出"; state.progress = "包含原文、译文、来源与处理状态"
         }
     }
+    suspend fun checkTable(state: ProjectState) {
+        val errors = mutableListOf<String>()
+        val ids = mutableSetOf<String>()
+        state.entries.forEachIndexed { index, entry ->
+            currentCoroutineContext().ensureActive()
+            if (!ids.add(entry.id)) errors += "第 ${index + 1} 项：重复 ID ${entry.id}"
+            if (entry.status in setOf("自动翻译", "手动修改")) {
+                runCatching { validate(entry) }.onFailure { errors += "${entry.id}：${it.message}" }
+                if (entry.translation == entry.original) errors += "${entry.id}：译文与原文一致，需要人工确认"
+            } else if (entry.status == "待处理" && entry.translation.isNotBlank()) errors += "${entry.id}：待处理状态却有译文"
+        }
+        File(store.directory, "translation-check-report.json").writeText(
+            JSONObject().put("totalEntries", state.entries.size).put("errors", org.json.JSONArray(errors)).toString(2))
+        state.stage = "翻译表检查完成"
+        state.progress = "检查 ${state.entries.size} 项，发现 ${errors.size} 个问题" + errors.take(2).joinToString("；", prefix = if (errors.isEmpty()) "" else "：")
+    }
+
+    suspend fun batchExport(state: ProjectState, uri: Uri, size: Int) {
+        val document = DocumentFile.fromSingleUri(context, uri) ?: error("目标文档不可用")
+        require(document.length() == 0L && document.canWrite()) { "导出目标必须是新建空文档" }
+        try {
+            (context.contentResolver.openOutputStream(uri, "wt") ?: error("无法写入 ZIP")).use { output ->
+                TranslationBatches.export(state, size, output) { state.progress = it }
+            }
+        } catch (failure: Throwable) { runCatching { document.delete() }; throw failure }
+        state.stage = "分批翻译表已导出"
+    }
+
+    suspend fun batchImport(state: ProjectState, uris: List<Uri>, resolution: String = "preview") {
+        val inputs = uris.map { uri ->
+            val name = DocumentFile.fromSingleUri(context, uri)?.name ?: uri.lastPathSegment ?: "文件"
+            name to (context.contentResolver.openInputStream(uri) ?: error("无法读取 $name"))
+        }
+        val (documents, errors) = TranslationBatches.collect(inputs)
+        val preview = TranslationBatches.preview(state, documents, errors, ::validate)
+        val report = JSONObject().put("new", preview.changes.size).put("conflicts", preview.conflicts.size)
+            .put("skipped", preview.skipped).put("errors", org.json.JSONArray(preview.errors))
+        File(store.directory, "table-import-report.json").writeText(report.toString(2))
+        state.issues.removeAll { it.startsWith("批量导入：") }
+        state.issues.addAll(preview.errors.take(100).map { "批量导入：$it" })
+        if (preview.errors.size > 100) state.issues += "批量导入：另有 ${preview.errors.size - 100} 项异常"
+        if (resolution == "preview") {
+            state.conflictChoices.clear()
+            state.importConflicts.clear()
+            state.importConflicts.addAll(preview.conflicts.map { proposal ->
+                val old = state.entries.single { it.id == proposal.id }
+                ImportConflict(proposal.id, old.original, old.translation, proposal.translation)
+            })
+            state.stage = "批量导入预览"
+            state.progress = "新增 ${preview.changes.size}，冲突 ${preview.conflicts.size}，异常 ${preview.errors.size}；选择处理方式后提交"
+            return
+        }
+        require(resolution in setOf("keep", "replace", "valid-only", "custom"))
+        require(resolution in setOf("valid-only", "custom") || preview.errors.isEmpty()) { "存在损坏记录；请先查看报告或选择仅导入有效记录" }
+        val indexed = state.entries.associateBy { it.id }
+        val selectedConflicts = when (resolution) {
+            "replace" -> preview.conflicts
+            "custom" -> preview.conflicts.filter { state.conflictChoices[it.id] == true }
+            else -> emptyList()
+        }
+        (preview.changes + selectedConflicts).forEach { proposal ->
+            indexed.getValue(proposal.id).apply { translation = proposal.translation; status = "手动修改"; reason = "从批量翻译表导入" }
+        }
+        state.importConflicts.clear(); state.conflictChoices.clear()
+        state.stage = "批量导入完成"
+        state.progress = "导入 ${preview.changes.size + selectedConflicts.size} 项，跳过 ${preview.skipped} 项，冲突 ${preview.conflicts.size} 项，异常 ${preview.errors.size} 项"
+    }
+
     private suspend fun forRecords(world: File, action: suspend (ByteArray, ByteArray?) -> Unit) {
         val db = NativeBridge.openDb(File(world, "db").absolutePath)
         try {
