@@ -79,9 +79,9 @@ private fun TranslatorScreen(model: WorldViewModel = viewModel()) {
                         Text(state.stage, style = MaterialTheme.typography.titleMedium)
                         Text(state.progress)
                         if (state.busy) {
-                            if (state.progressTotal > 0 && !state.progress.contains("正在检查资源文件")) {
+                            if (state.progressTotal > 0) {
                                 LinearProgressIndicator(progress = { (state.progressCurrent.toFloat() / state.progressTotal).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
-                                Text("${state.progressCurrent} / ${state.progressTotal} 条数据库记录")
+                                Text("${state.progressCurrent} / ${state.progressTotal} ${if (state.progress.startsWith("资源文件")) "个资源文件" else "条数据库记录"}")
                             } else LinearProgressIndicator(Modifier.fillMaxWidth())
                             OutlinedButton(onClick = model::pause) { Text("暂停任务") }
                         }
