@@ -202,11 +202,23 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
         state.progressTotal = total
         store.writeProgress("Java 区域区块 $scanned / $total；已提取 ${state.entries.size} 项", scanned, total)
         store.save(state)
+        // A stopped process can leave entries from a region that was not checkpointed as complete.
+        // Remove those entries before rescanning, while retaining every completed region and its edits.
+        state.entries.removeAll { entry ->
+            entry.recordKey.startsWith("java:") &&
+                entry.recordKey.removePrefix("java:").substringBeforeLast('#') !in state.javaDone
+        }
+        state.issues.removeAll { issue ->
+            issue.startsWith("java:") && state.javaDone.none { done -> issue.startsWith("java:$done#") }
+        }
         var checkpoint = 0
         for ((file, indices) in indexed) {
             currentCoroutineContext().ensureActive()
             val relative = file.relativeTo(world).invariantSeparatorsPath
             if (relative in state.javaDone) continue
+            val entryCheckpoint = state.entries.size
+            val issueCheckpoint = state.issues.size
+            try {
             for (index in indices) {
                 currentCoroutineContext().ensureActive()
                 val before = state.entries.size
@@ -253,6 +265,11 @@ class WorldOperations(private val context: Context, private val store: ProjectSt
                 scanned++
                 if (scanned % 32L == 0L) store.writeProgress(
                     "Java 区域区块 $scanned / $total；已提取 ${state.entries.size} 项", scanned, total)
+            }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                state.entries.subList(entryCheckpoint, state.entries.size).clear()
+                state.issues.subList(issueCheckpoint, state.issues.size).clear()
+                throw cancelled
             }
             state.javaDone += relative
             state.progressCurrent = scanned
