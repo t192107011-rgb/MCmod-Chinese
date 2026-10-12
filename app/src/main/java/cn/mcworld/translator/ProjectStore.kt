@@ -49,6 +49,7 @@ class ProjectStore(context: Context, val id: String) {
     init { require(id.matches(Regex("[0-9a-f-]{36}"))) }
     val directory = File(context.filesDir, "projects/$id").apply { mkdirs() }
     private val stateFile = File(directory, "project.json")
+    fun stateVersion(): Long = stateFile.lastModified()
     fun read(): ProjectState = synchronized(lock) {
         if (!stateFile.exists()) ProjectState(id) else ProjectState.from(JSONObject(stateFile.readText()))
     }
